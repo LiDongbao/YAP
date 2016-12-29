@@ -8,13 +8,11 @@
 #include "ChannelMerger.h"
 #include "CmrDataReader.h"
 #include "ComplexSplitter.h"
-#include "CompressedSensing.h"
 #include "DataTypeConvertor.h"
 #include "DcRemover.h"
 #include "Difference.h"
 #include "Fft1D.h"
 #include "Fft2D.h"
-#include "Grappa.h"
 #include "imageProcessing.h"
 #include "JpegExporter.h"
 #include "ModulePhase.h"
@@ -31,7 +29,6 @@
 #include "ExtractTextureMatrix.h"
 #include "SubSampling.h"
 #include "ZeroFilling.h"
-#include "cuFft2D.h"
 
 
 #include "Interface\Implement\YapImplement.h"
@@ -44,13 +41,11 @@ BEGIN_DECL_PROCESSORS
 	ADD_PROCESSOR(ChannelMerger)
 	ADD_PROCESSOR(CmrDataReader)
 	ADD_PROCESSOR(ComplexSplitter)
-	ADD_PROCESSOR(CompressedSensing)
 	ADD_PROCESSOR(DataTypeConvertor)
 	ADD_PROCESSOR(DcRemover)
 	ADD_PROCESSOR(Difference)
 	ADD_PROCESSOR(Fft1D)
 	ADD_PROCESSOR(Fft2D)
-	ADD_PROCESSOR(Grappa)
 	ADD_PROCESSOR(JpegExporter)
 	ADD_PROCESSOR(ModulePhase)
 	ADD_PROCESSOR(NiumagFidReader)
@@ -66,7 +61,6 @@ BEGIN_DECL_PROCESSORS
 	ADD_PROCESSOR(SubSampling)
 	ADD_PROCESSOR(ExtractTextureMatrix)
 	ADD_PROCESSOR(ZeroFilling)
-	ADD_PROCESSOR(cuFft2D)
 	ADD(L"HFlipFloat", new Algorithm2DInPlaceWrapper<float>(hflip<float>, L"HFlipFloat"))
 END_DECL_PROCESSORS
 
