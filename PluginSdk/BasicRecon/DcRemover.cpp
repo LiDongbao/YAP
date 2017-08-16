@@ -1,7 +1,8 @@
 #include "DcRemover.h"
 
-#include "Interface/Client/DataHelper.h"
-#include "Interface/Implement/DataObject.h"
+#include "Client/DataHelper.h"
+#include "Implement/DataObject.h"
+#include "Implement/LogUserImpl.h"
 
 #include <string>
 
@@ -57,21 +58,26 @@ void RemoveDC(T * input_data,
 }
 
 DcRemover::DcRemover() :
-	ProcessorImpl(L"DcRemove")
+	ProcessorImpl(L"DcRemover")
 {
+	LOG_TRACE(L"DcRemover constructor called.", L"BasicRecon");
 	AddInput(L"Input", 2, DataTypeComplexDouble | DataTypeComplexFloat);
 	
-	_properties->AddProperty(PropertyBool, L"Inplace", L"If the processed data will be stored in place.");
-	_properties->SetBool(L"Inplace", true);
-	_properties->AddProperty(PropertyInt, L"CornerSize", L"Size of the corners used to estimate noise level.");
-	_properties->SetInt(L"CornerSize", 10);
+	AddProperty<bool>(L"Inplace", true, L"If the processed data will be stored in place.");
+	AddProperty<int>(L"CornerSize", 10, L"Size of the corners used to estimate noise level.");
 
 	AddOutput(L"Output", 2, DataTypeComplexDouble | DataTypeComplexFloat);
 }
 
+Yap::DcRemover::DcRemover(const DcRemover& rhs)
+	:ProcessorImpl(rhs)
+{
+	LOG_TRACE(L"DcRemover constructor called.", L"BasicRecon");
+}
 
 DcRemover::~DcRemover()
 {
+	LOG_TRACE(L"DcRemover destructor called.", L"BasicRecon");
 }
 
 bool DcRemover::Input(const wchar_t * port, IData * data)
@@ -88,8 +94,8 @@ bool DcRemover::Input(const wchar_t * port, IData * data)
 
 	unsigned int width = input_data.GetWidth();
 	unsigned int height = input_data.GetHeight();
-	auto inplace = _properties->GetBool(L"Inplace");
-	unsigned int corner_size = _properties->GetInt(L"CornerSize");
+	auto inplace = GetProperty<bool>(L"Inplace");
+	unsigned int corner_size = GetProperty<int>(L"CornerSize");
 	if (corner_size >= height / 2 || corner_size >= width / 2 || corner_size < 2)
 		return false;
 
@@ -103,7 +109,7 @@ bool DcRemover::Input(const wchar_t * port, IData * data)
 		}
 		else
 		{
-			auto output_data = YapShared(new ComplexFloatData(data->GetDimensions()));
+			auto output_data = CreateData<complex<float>>(data);
 
 			RemoveDC(GetDataArray<complex<float>>(data), GetDataArray<complex<float>>(output_data.get()),
 				width, height, inplace, corner_size);
@@ -121,7 +127,7 @@ bool DcRemover::Input(const wchar_t * port, IData * data)
 		}
 		else
 		{
-			auto output_data = YapShared(new ComplexDoubleData(data->GetDimensions()));
+			auto output_data = CreateData<complex<double>>(data);
 
 			RemoveDC(GetDataArray<complex<double>>(data), GetDataArray<complex<double>>(output_data.get()),
 				width, height, inplace, corner_size);
@@ -130,9 +136,4 @@ bool DcRemover::Input(const wchar_t * port, IData * data)
 	}
 
 	return true;
-}
-
-Yap::IProcessor * Yap::DcRemover::Clone()
-{
-	return new (nothrow) DcRemover(*this);
 }

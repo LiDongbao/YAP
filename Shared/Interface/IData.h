@@ -1,50 +1,67 @@
-#ifndef IData_h__20160825
-#define IData_h__20160825
-
 #pragma once
-#ifndef OUT
-#define OUT
-#define IN
-#endif
+
+#ifndef IDATA_H_20170626
+#define IDATA_H_20170626
+
+#include "smartPtr.h"
+#include "IVariable.h"
 
 #include <complex>
 
+#ifndef OUT
+#define OUT
+#endif
+
 namespace Yap
 {
-	const int DataTypeUnknown		= 0x00000000;	///< enum not initialized yet.
-	const int DataTypeChar			= 0x00000001;	///< wchar_t (1)
-	const int DataTypeUnsignedChar	= 0x00000002;	///< unsigned wchar_t (1)
-	const int DataTypeShort			= 0x00000004;	///< short (2)
-	const int DataTypeUnsignedShort	= 0x00000008;	///< unsigned short (2)
-	const int DataTypeFloat			= 0x00000010;	///< float (4)
-	const int DataTypeDouble		= 0x00000020;	///< double (8)
-	const int DataTypeInt			= 0x00000040;	///< int (4)
-	const int DataTypeUnsignedInt	= 0x00000080;	///< unsigned int (4)
-	const int DataTypeComplexFloat	= 0x00000100;	///< complex<float> (8)
-	const int DataTypeComplexDouble	= 0x00000200;	///< complex<double> (16)
-	const int DataTypeBool			= 0x00000400;	///< bool
-	const int DataTypeAll			= 0xFFFFFFFF;	///< 若为此类型，说明此处理器对什么类型都接受。
+	/**
+		@defgroup data_type_constants Constants used to specify data type.
+		Constants used to specify the data type of elements in data objects used in Yap pipelines, 
+		and struct templates used to map a type to its corresponding DataType constants.
+		@{
+	*/
+	const int DataTypeUnknown = 0x00000000;			///< Type not initialized yet.
+	const int DataTypeChar = 0x00000001;			///< char (1 byte)
+	const int DataTypeUnsignedChar = 0x00000002;	///< unsigned char (1 byte)
+	const int DataTypeShort = 0x00000004;			///< short (2 bytes)
+	const int DataTypeUnsignedShort = 0x00000008;	///< unsigned short (2 bytes)
+	const int DataTypeFloat = 0x00000010;			///< float (4 bytes)
+	const int DataTypeDouble = 0x00000020;			///< double (8 bytes)
+	const int DataTypeInt = 0x00000040;				///< int (4 bytes)
+	const int DataTypeUnsignedInt = 0x00000080;		///< unsigned int (4 bytes)
+	const int DataTypeComplexFloat = 0x00000100;	///< complex<float> (2 * 4 bytes)
+	const int DataTypeComplexDouble = 0x00000200;	///< complex<double> (2 * 8 bytes)
+	const int DataTypeBool = 0x00000400;			///< bool (1 bytes)
+	const int DataTypeAll = 0xFFFFFFFF;				///< all types accepted
 
-	template<typename T> struct type_id
+	/**
+	struct used to map a type to its corresponding DataType constant.
+	*/
+	template<typename T> struct data_type_id
 	{
-		static const int type;
+		static const int type = 0;
+		// Don't define the above member so that DataObject can only be instantiated with
+		// the following types:
 	};
 
-	template <> struct type_id<double> { static const int type = DataTypeDouble; };
-	template <> struct type_id<char> { static const int type = DataTypeChar; };
-	template <> struct type_id<unsigned char> { static const int type = DataTypeUnsignedChar; };
-	template <> struct type_id<short> { static const int type = DataTypeShort; };
-	template <> struct type_id <unsigned short> { static const int type = DataTypeUnsignedShort; };
-	template <> struct type_id <float> { static const int type = DataTypeFloat; };
-	template <> struct type_id <unsigned int> { static const int type = DataTypeUnsignedInt; };
-	template <> struct type_id <int> { static const int type = DataTypeInt; };
-	template <> struct type_id <std::complex<float>> { static const int type = DataTypeComplexFloat; };
-	template <> struct type_id <std::complex<double>> { static const int type = DataTypeComplexFloat; };
-	template <> struct type_id <bool> { static const int type = DataTypeBool; };
+	template <> struct data_type_id<double> { static const int type = DataTypeDouble; };
+	template <> struct data_type_id<char> { static const int type = DataTypeChar; };
+	template <> struct data_type_id<unsigned char> { static const int type = DataTypeUnsignedChar; };
+	template <> struct data_type_id<short> { static const int type = DataTypeShort; };
+	template <> struct data_type_id<unsigned short> { static const int type = DataTypeUnsignedShort; };
+	template <> struct data_type_id<float> { static const int type = DataTypeFloat; };
+	template <> struct data_type_id<unsigned int> { static const int type = DataTypeUnsignedInt; };
+	template <> struct data_type_id<int> { static const int type = DataTypeInt; };
+	template <> struct data_type_id<std::complex<float>> { static const int type = DataTypeComplexFloat; };
+	template <> struct data_type_id<std::complex<double>> { static const int type = DataTypeComplexDouble; };
+	template <> struct data_type_id<bool> { static const int type = DataTypeBool; };
+	/** @} */
 
 
-	/// 定义了磁共振图像数据中的常用的维度。
 	/**
+	@brief Used to define meaning of a specific dimension of medical image data.
+
+	MRI images or raw data are 
 	通常在定义多维数据时，Readout, PhaseEncoding, Slice三个方向会优先连续存储。
 	其他维度的次序则不确定。习惯上在描述数据维度信息时，应按照习惯的名称命名。
 	*/
@@ -80,14 +97,14 @@ namespace Yap
 		Dimension(DimensionType type, unsigned start_index, unsigned int length);
 	};
 
-	struct IDimensions
+	struct IDimensions : public ISharedObject
 	{
 		virtual unsigned int GetDimensionCount() = 0;
 		virtual bool GetDimensionInfo(unsigned int index, OUT DimensionType& dimension_type,
 			OUT unsigned int& start_index, OUT unsigned int& length) = 0;
 	};
 
-	struct IGeometry
+	struct IGeometry : public ISharedObject
 	{
 		virtual void GetSpacing(double& x, double& y, double& z) = 0;
 		virtual void GetRowVector(double& x, double& y, double& z) = 0;
@@ -108,17 +125,29 @@ namespace Yap
 		virtual bool IsValid() = 0;
 	};
 
-	template <typename T> struct IDataArray
+	struct IData : public ISharedObject
 	{
-		/// 返回数组的起始地址。
+		/// Get the type of the data element.
+		virtual int GetDataType() = 0;
+
+		/// Get the dimension information of the data.
+		virtual IDimensions * GetDimensions() = 0;	
+	
+		/// Get spatial location of the image.
+		virtual IGeometry * GetGeometry() = 0;
+
+		/// Get the variable space associated with the data.
+		virtual IVariableContainer * GetVariables() = 0;
+	};
+
+	template <typename T> struct IDataArray : public IData
+	{
+		static_assert(data_type_id<T>::type != 0, "You have to use standard types.");
+
+		/// Get the pointer to the raw array.
 		virtual T * GetData() = 0;
 	};
 
-	struct IData
-	{
-		virtual int GetDataType() = 0;			///< 返回数据元素的类型
-		virtual IDimensions * GetDimensions() = 0;	///< 获得数据的维度信息。
-	};
+};
 
-}
-#endif // IData_h__
+#endif // IDATA_H_20170626

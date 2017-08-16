@@ -1,12 +1,9 @@
 #include "stdafx.h"
 
 #include "ProcessorDebugger.h"
+#include "Implement/DataObject.h"
 
 #include <iostream>
-
-#include "Interface/Implement/DataObject.h"
-#include "Interface/IProcessor.h"
-#include "Interface/IProperty.h"
 
 using namespace Yap;
 using namespace std;
@@ -15,7 +12,7 @@ void YapDebugger::DebugPort(IPortIter& ports)
 {
 	for (auto port = ports.GetFirst(); port != nullptr; port = ports.GetNext())
 	{
-		wcout << "Name: " << port->GetName() << "\t Dimensions: " << port->GetDimensionCount()
+		wcout << "Name: " << port->GetId() << "\t Dimensions: " << port->GetDimensionCount()
 			<< "\t int: " << port->GetDataType() << endl;
 	}
 }
@@ -55,36 +52,40 @@ void YapDebugger::DebugOutput(IProcessor& processor)
 	}
 }
 
-bool YapDebugger::DebugProperties(IPropertyIter& properties)
+bool YapDebugger::DebugProperties(IVariableIter& properties)
 {
 	for (auto property = properties.GetFirst(); property != nullptr;
 		property = properties.GetNext())
 	{
-		wcout << property->GetName() << " " << property->GetType() << " ";
+		wcout << property->GetId() << " " << property->GetType() << " ";
 		switch (property->GetType())
 		{
-		case PropertyBool:
+		case VariableBool:
 		{
-			auto value_interface = dynamic_cast<IBoolean*>(property);
-			wcout << value_interface->GetBool();
+			auto variable_bool = dynamic_cast<ISimpleVariable<bool>*>(property);
+			assert(variable_bool != nullptr);
+			wcout << variable_bool->Get();
 			break;
 		}
-		case PropertyFloat:
+		case VariableFloat:
 		{
-			auto value_interface = dynamic_cast<IDouble*>(property);
-			wcout << value_interface->GetDouble();
+			auto variable_double = dynamic_cast<ISimpleVariable<double>*>(property);
+			assert(variable_double != nullptr);
+			wcout << variable_double->Get();
 			break;
 		}
-		case PropertyInt:
+		case VariableInt:
 		{
-			auto value_interface = dynamic_cast<IInt*>(property);
-			wcout << value_interface->GetInt();
+			auto variable_int = dynamic_cast<ISimpleVariable<int>*>(property);
+			assert(variable_int != nullptr);
+			wcout << variable_int->Get();
 			break;
 		}
-		case PropertyString:
+		case VariableString:
 		{
-			auto value_interface = dynamic_cast<IString*>(property);
-			wcout << value_interface->GetString();
+			auto variable_string = dynamic_cast<ISimpleVariable<const wchar_t*>*>(property);
+			assert(variable_string != nullptr);
+			wcout << variable_string->Get();
 			break;
 		}
 		default:
@@ -101,7 +102,7 @@ bool YapDebugger::DebugPlugin(const wchar_t * path)
 	auto module = ::LoadLibrary(path);
 	if (module == NULL)
 	{
-		wcout << L"Failed to load plugin.\n";
+		wcout << L"Failed to load plug-in DLL.\n";
 		return false;
 	}
 

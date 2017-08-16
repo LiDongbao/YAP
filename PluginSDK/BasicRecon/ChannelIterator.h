@@ -1,18 +1,19 @@
 #pragma once
-#include "Interface/Implement/ProcessorImpl.h"
+#include "Implement/ProcessorImpl.h"
 namespace Yap
 {
 	class ChannelIterator :
 		public ProcessorImpl
 	{
+		IMPLEMENT_SHARED(ChannelIterator)
 	public:
 		ChannelIterator();
-
-		virtual IProcessor * Clone() override;
-		virtual bool Input(const wchar_t * name, IData * data) override;
+		ChannelIterator(const ChannelIterator& rhs);
 
 	protected:
 		~ChannelIterator();
+
+		virtual bool Input(const wchar_t * name, IData * data) override;
 	};
 }
 

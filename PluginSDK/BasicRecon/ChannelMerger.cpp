@@ -1,7 +1,9 @@
-#include "stdafx.h"
+ï»¿#include "stdafx.h"
 #include "ChannelMerger.h"
-#include "Interface/Client/DataHelper.h"
+#include "Client/DataHelper.h"
 #include <utility>
+
+#include "Implement/LogUserImpl.h"
 
 using namespace Yap;
 using namespace std;
@@ -9,26 +11,23 @@ using namespace std;
 ChannelMerger::ChannelMerger(void) :
 	ProcessorImpl(L"ChannelMerger")
 {
+	LOG_TRACE(L"ChannelMerger constructor called.", L"BasicRecon");
 	AddOutput(L"Output", 2, DataTypeFloat);
 	AddInput(L"Input", 2, DataTypeFloat);
 
-	_properties->AddProperty(PropertyInt, L"ChannelCount", L"Í¨µÀÊı");
-	_properties->SetInt(L"ChannelCount", 4);
-	_properties->AddProperty(PropertyInt, L"ChannelSwitch", L"Í¨µÀ¿ª¹ØÖ¸Ê¾Öµ");
+	AddProperty<int>(L"ChannelCount", 4, L"é€šé“æ•°");
+	AddProperty<int>(L"ChannelSwitch", 0xf, L"é€šé“å¼€å…³æŒ‡ç¤ºå€¼");
 }
 
 ChannelMerger::ChannelMerger( const ChannelMerger& rhs )
 	: ProcessorImpl(rhs)
 {
+	LOG_TRACE(L"ChannelMerger constructor called.", L"BasicRecon");
 }
 
 ChannelMerger::~ChannelMerger(void)
 {
-}
-
-IProcessor* ChannelMerger::Clone()
-{
-	return new(nothrow) ChannelMerger(*this);
+	LOG_TRACE(L"ChannelMerger destructor called.", L"BasicRecon");
 }
 
 bool ChannelMerger::Input(const wchar_t * name, IData * data)
@@ -42,7 +41,7 @@ bool ChannelMerger::Input(const wchar_t * name, IData * data)
 	auto iter = _merge_buffers.find(key);
 	if (iter == _merge_buffers.end())
 	{
-		Dimensions merge_dimensions(helper.GetDimensionCount() - 1); // Ïû³ıDimensionChannelÕâÒ»Î¬
+		Dimensions merge_dimensions(helper.GetDimensionCount() - 1); // æ¶ˆé™¤DimensionChannelè¿™ä¸€ç»´
 
 		DimensionType type = DimensionInvalid;
 		unsigned int index = 0, length = 0;
@@ -59,7 +58,7 @@ bool ChannelMerger::Input(const wchar_t * name, IData * data)
 		}
 
 		MergeBuffer merge_buffer;
-		merge_buffer.buffer = YapShared(new FloatData(&merge_dimensions));
+		merge_buffer.buffer = CreateData<float>(data, &merge_dimensions);
 
 		// merge_buffer.buffer->SetLocalization(CLocalization(*data->GetLocalization()));
 		auto * data_array = Yap::GetDataArray<float>(data);
@@ -102,10 +101,10 @@ bool ChannelMerger::Input(const wchar_t * name, IData * data)
 // 	unsigned int used_channel_count = 0;
 // 	for (used_channel_count = 0; bit_number; ++used_channel_count)
 // 	{
-// 		bit_number &= (bit_number - 1);   // Ïû³ı×îµÍÎ»µÄ1.
-// 	}   // ×îºóused_channel_countµÃµ½1µÄ¸öÊı¡£¼´´ò¿ªµÄÍ¨µÀ×ÜÊı
+// 		bit_number &= (bit_number - 1);   // æ¶ˆé™¤æœ€ä½ä½çš„1.
+// 	}   // æœ€åused_channel_countå¾—åˆ°1çš„ä¸ªæ•°ã€‚å³æ‰“å¼€çš„é€šé“æ€»æ•°
 
-	if (iter->second.count == _properties->GetInt(L"ChannelCount"))
+	if (iter->second.count == GetProperty<int>(L"ChannelCount"))
 	{
 		Feed(L"Output", iter->second.buffer.get());
 	}
@@ -134,10 +133,4 @@ std::vector<unsigned int> ChannelMerger::GetKey(IDimensions * dimensions)
 	}
 
 	return result;
-}
-
-template<typename T>
-T * GetData(IData * data)
-{
-
 }

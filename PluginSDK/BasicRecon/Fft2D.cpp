@@ -1,7 +1,8 @@
 #include "Fft2D.h"
 
-#include "Interface/Client/DataHelper.h"
-#include "Interface/Implement/DataObject.h"
+#include "Client/DataHelper.h"
+#include "Implement/DataObject.h"
+#include "Implement/LogUserImpl.h"
 
 #include <string>
 
@@ -16,19 +17,30 @@ Fft2D::Fft2D():
 	_plan_in_place(false),
 	_fft_plan(nullptr)
 {
-	_properties->AddProperty(PropertyBool, L"Inverse", L"The direction of FFT2D.");
-	_properties->AddProperty(PropertyBool, L"InPlace", L"The position of FFT2D.");
-
-	_properties->SetBool(L"Inverse", false);
-	_properties->SetBool(L"InPlace", true);
+	LOG_TRACE(L"Fft2D constructor called.", L"BasicRecon");
+	AddProperty<bool>( L"Inverse", false, L"The direction of FFT2D.");
+	AddProperty<bool>( L"InPlace", true, L"The position of FFT2D.");
 
 	AddInput(L"Input", 2, DataTypeComplexFloat);
 	AddOutput(L"Output", 2, DataTypeComplexFloat);
 }
 
 
+Fft2D::Fft2D(const Fft2D& rhs)
+	:ProcessorImpl(rhs),
+	_plan_data_width(rhs._plan_data_width),
+	_plan_data_height(rhs._plan_data_height),
+	_plan_inverse(rhs._plan_inverse),
+	_plan_in_place(rhs._plan_in_place),
+	_fft_plan(rhs._fft_plan)
+{
+	LOG_TRACE(L"Fft2D constructor called.", L"BasicRecon");
+}
+
+
 Fft2D::~Fft2D()
 {
+	LOG_TRACE(L"Fft2D destructor called.", L"BasicRecon");
 }
 
 bool Fft2D::Input(const wchar_t * port, IData * data)
@@ -48,20 +60,17 @@ bool Fft2D::Input(const wchar_t * port, IData * data)
 
 	auto data_array = GetDataArray<complex<float>>(data);
 
-	if (_properties->GetBool(L"InPlace"))
+	if (GetProperty<bool>(L"InPlace"))
 	{
-		Fft(data_array, data_array, width, height, _properties->GetBool(L"Inverse"));
+		Fft(data_array, data_array, width, height, GetProperty<bool>(L"Inverse"));
 		Feed(L"Output", data);
 	}
 	else
 	{
-		Yap::Dimensions dims;
-		dims(DimensionReadout, 0, width)
-			(DimensionPhaseEncoding, 0, height);
-		auto output = YapShared(new ComplexDoubleData(&dims));
+		auto output = CreateData<complex<double>>(data);
 
 		Fft(data_array, GetDataArray<complex<float>>(output.get()),
-			width, height, _properties->GetBool(L"Inverse"));
+			width, height, GetProperty<bool>(L"Inverse"));
 		Feed(L"Output", output.get());
 	}
 	return true;
@@ -135,10 +144,5 @@ void Fft2D::Plan(size_t width, size_t height, bool inverse, bool in_place)
 	_plan_data_height = static_cast<unsigned int> (height);
 	_plan_inverse = inverse;
 	_plan_in_place = in_place;
-}
-
-Yap::IProcessor * Yap::Fft2D::Clone()
-{
-	return new (nothrow) Fft2D(*this);
 }
 

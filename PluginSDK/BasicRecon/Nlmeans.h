@@ -1,5 +1,5 @@
 #pragma once
-#include "Interface\Implement\ProcessorImpl.h"
+#include "Implement\ProcessorImpl.h"
 #include <armadillo>
 
 #define MAX(i, j) ((i) < (j) ? (j) : (i))
@@ -18,15 +18,15 @@ namespace Yap
 	class Nlmeans :
 		public ProcessorImpl
 	{
+		IMPLEMENT_SHARED(Nlmeans)
 	public:
 		Nlmeans(void);
 		Nlmeans(const Nlmeans& rhs);
 
-		virtual IProcessor * Clone() override;
-		virtual bool Input(const wchar_t * name, IData * data) override;
-
 	protected:
 		~Nlmeans();
+
+		virtual bool Input(const wchar_t * name, IData * data) override;
 
 		void nlmeans_ipol(unsigned int iDWin, unsigned int iDBloc, float Sigma, float fFiltPar, 
 			float * fpI, float * fpO, unsigned int iWidth, unsigned int iHeight);

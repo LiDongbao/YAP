@@ -1,20 +1,20 @@
 #pragma once
-#include "Interface\Implement\ProcessorImpl.h"
+#include "Implement\ProcessorImpl.h"
 
 namespace Yap
 {
 	class ChannelDataCollector :
 		public ProcessorImpl
 	{
+		IMPLEMENT_SHARED(ChannelDataCollector)
 	public:
 		ChannelDataCollector(void);
 		ChannelDataCollector(const ChannelDataCollector& rhs);
 
-		virtual IProcessor * Clone() override;
-		virtual bool Input(const wchar_t * name, IData * data) override;
-
 	protected:
 		~ChannelDataCollector(void);
+
+		virtual bool Input(const wchar_t * name, IData * data) override;
 
 		struct CollectorBuffer
 		{

@@ -1,9 +1,10 @@
-#include "stdafx.h"
+ï»¿#include "stdafx.h"
 #include "SliceMerger.h"
 
 #include <complex.h>
-#include "Interface/Client/DataHelper.h"
-#include "Interface/Implement/DataObject.h"
+#include "Client/DataHelper.h"
+#include "Implement/DataObject.h"
+#include "Implement/LogUserImpl.h"
 
 using namespace Yap;
 using namespace std;
@@ -11,24 +12,22 @@ using namespace std;
 SliceMerger::SliceMerger(void) :
 	ProcessorImpl(L"SliceMerger")
 {
+	LOG_TRACE(L"SliceMerger constructor called.", L"BasicRecon");
 	AddInput(L"Input", 2, DataTypeAll);
 	AddOutput(L"Output", 3, DataTypeAll);
 
-	_properties->AddProperty(PropertyInt, L"SliceCount", L"Slice count");
+	AddProperty<int>(L"SliceCount", 0, L"Slice count");
 }
 
 SliceMerger::SliceMerger(const SliceMerger& rhs)
 	: ProcessorImpl(rhs)
 {
+	LOG_TRACE(L"SliceMerger constructor called.", L"BasicRecon");
 }
 
 SliceMerger::~SliceMerger()
 {
-}
-
-IProcessor * SliceMerger::Clone()
-{
-	return new (std::nothrow) SliceMerger(*this);
+	LOG_TRACE(L"SliceMerger destructor called.", L"BasicRecon");
 }
 
 bool SliceMerger::Input(const wchar_t * port, IData * data)
@@ -37,7 +36,7 @@ bool SliceMerger::Input(const wchar_t * port, IData * data)
 		return false;
 
 	static int slice_num = 0;
-	auto slice_count = _properties->GetInt(L"SliceCount");
+	auto slice_count = GetProperty<int>(L"SliceCount");
 	assert(slice_count > 0);
 
 	if (slice_num == 0)
@@ -51,8 +50,8 @@ bool SliceMerger::Input(const wchar_t * port, IData * data)
 			(DimensionPhaseEncoding, 0, height)
 			(DimensionSlice, 0, slice_count);
 		
-		TODO(ÈÃSliceMergerÊÊÓ¦²»Í¬Êı¾İÀàĞÍ);
-		_data = YapShared(new UnsignedShortData(&dims));
+		TODO(è®©SliceMergeré€‚åº”ä¸åŒæ•°æ®ç±»å‹);
+		_data = CreateData<unsigned short>(data, &dims);
 
 		++slice_num;
 	}

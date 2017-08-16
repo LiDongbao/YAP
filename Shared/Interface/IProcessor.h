@@ -1,60 +1,59 @@
 #pragma once
+#ifndef IProcessor_h__20170803
+#define IProcessor_h__20170803
 
-#ifndef IProcessor_h__20160818
-#define IProcessor_h__20160818
-
-#include "IMemory.h"
 #include "IContainer.h"
-#include "IProperty.h"
+#include "smartptr.h"
 
 namespace Yap
 {
 	struct IData;
 
-	struct IPort
+	struct IPort : public ISharedObject
 	{
-		virtual const wchar_t * GetName() = 0;
-		virtual unsigned int GetDimensionCount() = 0;
-		virtual int GetDataType() = 0;
+		virtual const wchar_t * GetId() const = 0;
+		virtual unsigned int GetDimensionCount() const = 0;
+		virtual int GetDataType() const = 0;
 	};
 
-	typedef IContainer<IPort> IPortContainer;
-	typedef IPortContainer::iterator IPortIter;
-	
-	
-	struct IProcessor 
-	{
-		/// Return a cloned copy of this object.
-		virtual IProcessor * Clone() = 0;
+	typedef IPtrContainer<IPort> IPortContainer;
+	typedef IPortContainer::Iterator IPortIter;
 
-		virtual const wchar_t * GetClassId() = 0;
+	struct IProcessor : public ISharedObject
+	{
+		virtual ISharedObject * Clone() const override = 0;
+		virtual const wchar_t * GetClassId() const = 0;
 		virtual void SetClassId(const wchar_t * id) = 0;
 
-		virtual const wchar_t * GetInstanceId() = 0;
+		virtual const wchar_t * GetInstanceId() const = 0;
 		virtual void SetInstanceId(const wchar_t * instance_id) = 0;
 
 		virtual IPortContainer * Inputs() = 0;
 		virtual IPortContainer * Outputs() = 0;
 
-		/// 获得属性访问接口。
-		virtual IPropertyContainer * GetProperties() = 0;
+		/// Return all properties of the processor.
+		virtual IVariableContainer * GetProperties() = 0;
 
-		/// 将指定名称的属性与参数空间的参数相关联。
-		virtual bool LinkProperty(const wchar_t * property_id, const wchar_t * param_id) = 0;
+		/// Map a global variable to a processor property.
+		virtual bool MapProperty(const wchar_t * property_id, const wchar_t * variable_id,
+			bool input, bool output) = 0;
 
-		/// 接口用户调用这个函数来通知模块利用参数空间中的参数更新属性。
-		virtual bool UpdateProperties(IPropertyContainer * params) = 0;
+		/// Set the global variable space. 
+		virtual bool SetGlobalVariables(IVariableContainer * params) = 0;
 
-		/// 将指定处理模块的输入端口链接到当前模块指定的输出端口上。
+		/// Line the output port to an input port of another processor.
 		virtual bool Link(const wchar_t * output, IProcessor * next, const wchar_t * next_input) = 0;
 
-		/// 向当前处理模块馈送数据。
+		/// Feed data into the processor via the specified port.
 		virtual bool Input(const wchar_t * name, IData * data) = 0;
+
+		/** @brief Specifies the module that hosts this processor. @p
+		The module should be locked till the processor is no longer used. */
+		virtual void SetModule(ISharedObject * module) = 0;
 	};
 
-	typedef IContainer<IProcessor> IProcessorContainer;
-	typedef IProcessorContainer::iterator IProcessorIter;
+	typedef IPtrContainer<IProcessor> IProcessorContainer;
+	typedef IProcessorContainer::Iterator IProcessorIter;
 }
-
 
 #endif // IProcessor_h__

@@ -1,9 +1,12 @@
 #include "stdafx.h"
 #include "NiumagFidWriter.h"
+#include "Implement/LogUserImpl.h"
 
+#include <time.h>
+#include <stdio.h>
 #include <fstream>
 #include <iosfwd>
-#include "Interface\Client\DataHelper.h"
+#include "Client\DataHelper.h"
 
 using namespace Yap;
 using namespace std;
@@ -11,66 +14,60 @@ using namespace std;
 NiumagFidWriter::NiumagFidWriter(void) :
 	ProcessorImpl(L"NiumagFidWriter")
 {
-	AddInput(L"Input", 4, DataTypeComplexFloat);
-	_properties->AddProperty(PropertyString, L"ExportFolder", L"Set folder used to write fid.");
+	LOG_TRACE(L"NiumagFidWriter constructor called.", L"BasicRecon");
+	AddInput(L"Input", YAP_ANY_DIMENSION, DataTypeComplexFloat);
+
+	AddProperty<const wchar_t * const>(L"ExportFolder", L"", L"Set folder used to write FID.");
+	AddProperty<const wchar_t * const>(L"FileName", L"", L"Set file name.");
+	AddProperty<const wchar_t * const>(L"SavePath", L"", L"Full Path (folder and file name) used to write FID");
 }
 
 NiumagFidWriter::NiumagFidWriter(const NiumagFidWriter& rhs) :
 	ProcessorImpl(rhs)
 {
+	LOG_TRACE(L"NiumagFidWriter constructor called.", L"BasicRecon");
 }
 
 NiumagFidWriter::~NiumagFidWriter()
 {
-}
-
-IProcessor * Yap::NiumagFidWriter::Clone()
-{
-	return new(nothrow) NiumagFidWriter(*this);
+	LOG_TRACE(L"NiumagFidWriter destructor called.", L"BasicRecon");
 }
 
 bool Yap::NiumagFidWriter::Input(const wchar_t * name, IData * data)
 {
 	assert((data != nullptr) && (GetDataArray<complex<float>>(data) != nullptr));
 
-	wostringstream file_name;
-	static unsigned int niumag_img_index = 0;
-	file_name << ++niumag_img_index;
-
-	auto output_folder = _properties->GetString(L"ExportFolder");
-	wstring file_path = output_folder;
-	if (wcslen(output_folder) > 3)
+	auto file_path = GetProperty<const wchar_t * const>(L"SavePath");
+	if (!file_path)
 	{
-		file_path += L"\\";
+		auto output_folder = GetProperty<const wchar_t * const>(L"ExportFolder");
+		auto output_name = GetProperty<const wchar_t * const>(L"FileName");
+		file_path = GetFilePath(output_folder, output_name).c_str();
 	}
-	file_path += file_name.str();
-	file_path += L".img.fid";
 
-	//write data
+	// write data
 	int file_version = 1;
 	int section1size = 100;
 	int section2size = 100;
 	int section3size = 100;
 	int section4size = 100;
-	int section5size = 100; //fid
+	int section5size = 100; // fid
 	
 	int section5_offset = 4 * 6 + 400;
 
 	DataHelper data_helper(data);
 
 	auto dimension_count = data_helper.GetDimensionCount();
-	if (dimension_count != 4)
-		return false;
 
 	int dim1 = data_helper.GetWidth();
 	int dim2 = data_helper.GetHeight();
-	int dim3 = data_helper.GetSlice();
+	int dim3 = data_helper.GetSliceCount();
 	int dim4 = data_helper.GetDim4();
 
 	unsigned buffer_size = dim1 * dim2 * dim3 * dim4;
 	complex<float> * fid_data = GetDataArray<complex<float>>(data);
 
-	ofstream file(file_path.c_str(), ios::binary);
+	ofstream file(file_path, ios::binary);
 
 	file.write(reinterpret_cast<char*>(&file_version), 4);
 	file.write(reinterpret_cast<char*>(&section1size), 4);
@@ -88,4 +85,31 @@ bool Yap::NiumagFidWriter::Input(const wchar_t * name, IData * data)
 	file.close();
 
 	return true;
+}
+
+std::wstring Yap::NiumagFidWriter::GetFilePath(const wchar_t * output_folder, const wchar_t * output_name)
+{
+	wstring file_path = output_folder;
+	if (wcslen(output_folder) > 3)
+	{
+		file_path += L"\\";
+	}
+
+	if (wcslen(output_name) > 0)
+	{
+		file_path += output_name;
+		file_path += L".";
+	}
+
+	time_t t = time(0);
+	char tmp[64];
+	strftime(tmp, sizeof(tmp), "%Y%m%d-%H%M%S", localtime(&t));
+	string str(tmp);
+	std::wstring wstr;
+	wstr.assign(str.begin(), str.end());
+	file_path += wstr;
+
+	file_path += L".fid";
+
+	return file_path;
 }

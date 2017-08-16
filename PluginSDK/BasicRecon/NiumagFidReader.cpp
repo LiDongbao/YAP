@@ -1,5 +1,6 @@
-#include "stdafx.h"
+ï»¿#include "stdafx.h"
 #include "NiumagFidReader.h"
+#include "Implement/LogUserImpl.h"
 
 #include <sstream>
 #include <iostream>
@@ -30,19 +31,22 @@ namespace Yap
 NiumagFidReader::NiumagFidReader(void):
 	ProcessorImpl(L"NiumagFidReader")
 {
+	LOG_TRACE(L"NiumagFidReader constructor called.", L"BasicRecon");
 	AddInput(L"Input", 0, DataTypeUnknown);
 	AddOutput(L"Output", YAP_ANY_DIMENSION, DataTypeComplexFloat);
 
-	_properties->AddProperty(PropertyString, L"DataPath", L"Êý¾ÝÎÄ¼þ¼ÐºÍÎÄ¼þÃû¡£");
+	AddProperty<const wchar_t * const>(L"DataPath", L"", L"æ•°æ®æ–‡ä»¶å¤¹å’Œæ–‡ä»¶åã€‚");
 }
 
 NiumagFidReader::NiumagFidReader(const NiumagFidReader& rhs):
 	ProcessorImpl(rhs)
 {
+	LOG_TRACE(L"NiumagFidReader constructor called.", L"BasicRecon");
 }
 
 NiumagFidReader::~NiumagFidReader()
 {
+	LOG_TRACE(L"NiumagFidReader destructor called.", L"BasicRecon");
 }
 
 bool Yap::NiumagFidReader::Input(const wchar_t * name, IData * data)
@@ -56,14 +60,9 @@ bool Yap::NiumagFidReader::Input(const wchar_t * name, IData * data)
 	return true;
 }
 
-IProcessor * Yap::NiumagFidReader::Clone()
-{
-	return new(nothrow) NiumagFidReader(*this);
-}
-
 bool Yap::NiumagFidReader::ReadNiumagFidData()
 {
-	std::wostringstream output(_properties->GetString(L"DataPath"));
+	std::wostringstream output(GetProperty<const wchar_t * const>(L"DataPath"));
 	wstring data_path = output.str();
 
 	try
@@ -89,7 +88,7 @@ bool Yap::NiumagFidReader::ReadNiumagFidData()
 		int dim3 = buf[2];
 		int dim4 = buf[3];
 
-		if (dim1 > 2048 || dim2 > 2048 || dim3 > 2048 || dim4 > 2048)
+		if (dim1 > 8192 || dim2 > 8192 || dim3 > 2048 || dim4 > 2048)
 		{
 			throw std::ifstream::failure("out of range");
 		}
@@ -109,8 +108,8 @@ bool Yap::NiumagFidReader::ReadNiumagFidData()
 			(DimensionSlice, 0U, dim3)
 			(Dimension4, 0U, dim4);
 
-		auto data = YapShared(new ComplexFloatData(
-			reinterpret_cast<complex<float>*>(buffer), dimensions, nullptr, true));
+		auto data = CreateData<complex<float>>(nullptr,
+			reinterpret_cast<complex<float>*>(buffer), dimensions, nullptr, true);
 
 		Feed(L"Output", data.get());
 	}

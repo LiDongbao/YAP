@@ -1,7 +1,8 @@
 #include "ZeroFilling.h"
 
-#include "Interface/Client/DataHelper.h"
-#include "Interface/Implement/DataObject.h"
+#include "Client/DataHelper.h"
+#include "Implement/DataObject.h"
+#include "Implement/LogUserImpl.h"
 
 #include <string>
 #include <complex>
@@ -32,21 +33,25 @@ bool zero_filling(T* dest,
 
 ZeroFilling::ZeroFilling() : ProcessorImpl(L"ZeroFilling")
 {
+	LOG_TRACE(L"ZeroFilling constructor called.", L"BasicRecon");
 	AddInput(L"Input", YAP_ANY_DIMENSION, DataTypeComplexDouble | DataTypeComplexFloat);
 	AddOutput(L"Output", YAP_ANY_DIMENSION, DataTypeComplexDouble | DataTypeComplexFloat);
 
-	_properties->AddProperty(PropertyInt, L"DestWidth", L"Destination width.");
-	_properties->SetInt(L"DestWidth", 256);
-	_properties->AddProperty(PropertyInt, L"DestHeight", L"Destination height.");
-	_properties->SetInt(L"DestHeight", 256);
-	_properties->AddProperty(PropertyInt, L"Left", L"X coordinate of top left corner of source data in destination data.");
-	_properties->SetInt(L"Left", 0);
-	_properties->AddProperty(PropertyInt, L"Top", L"Y coordinate of top left corner of source data in destination data.");
-	_properties->SetInt(L"Top", 0);
+	AddProperty<int>(L"DestWidth", 256, L"Destination width.");
+	AddProperty<int>(L"DestHeight", 256, L"Destination height.");
+	AddProperty<int>(L"Left", 0, L"X coordinate of top left corner of source data in destination data.");
+	AddProperty<int>(L"Top", 0, L"Y coordinate of top left corner of source data in destination data.");
+}
+
+ZeroFilling::ZeroFilling(const ZeroFilling& rhs)
+	:ProcessorImpl(rhs)
+{
+	LOG_TRACE(L"ZeroFilling constructor called.", L"BasicRecon");
 }
 
 ZeroFilling::~ZeroFilling()
 {
+	LOG_TRACE(L"ZeroFilling destructor called.", L"BasicRecon");
 }
 
 bool ZeroFilling::Input(const wchar_t * port, IData * data)
@@ -54,8 +59,8 @@ bool ZeroFilling::Input(const wchar_t * port, IData * data)
 	if (std::wstring(port) != L"Input")
 		return false;
 
-	unsigned int dest_width(_properties->GetInt(L"DestWidth"));
-	unsigned int dest_height(_properties->GetInt(L"DestHeight"));
+	unsigned int dest_width(GetProperty<int>(L"DestWidth"));
+	unsigned int dest_height(GetProperty<int>(L"DestHeight"));
 
 	DataHelper input_data(data);
 	if (input_data.GetDataType() != DataTypeComplexDouble && input_data.GetDataType() != DataTypeComplexFloat)
@@ -76,7 +81,7 @@ bool ZeroFilling::Input(const wchar_t * port, IData * data)
 
 	if (data->GetDataType() == DataTypeComplexDouble)
 	{
-		auto output = YapShared(new ComplexDoubleData(&dims));
+		auto output = CreateData<std::complex<double>>(data, &dims);
 		zero_filling(Yap::GetDataArray<complex<double>>(output.get()), dest_width, dest_height,
 			Yap::GetDataArray<complex<double>>(data), input_data.GetWidth(), input_data.GetHeight());
 
@@ -84,7 +89,7 @@ bool ZeroFilling::Input(const wchar_t * port, IData * data)
 	}
 	else
 	{
-		auto output = YapShared(new ComplexFloatData(&dims));
+		auto output = CreateData<std::complex<float>>(data, &dims);
 		zero_filling(Yap::GetDataArray<complex<float>>(output.get()), dest_width, dest_height,
 					Yap::GetDataArray<complex<float>>(data), input_data.GetWidth(), input_data.GetHeight());
 
@@ -92,11 +97,6 @@ bool ZeroFilling::Input(const wchar_t * port, IData * data)
 	}
 	
 	return true;
-}
-
-Yap::IProcessor * Yap::ZeroFilling::Clone()
-{
-	return new (std::nothrow) ZeroFilling(*this);
 }
 
 

@@ -1,6 +1,7 @@
 #include "SliceSelector.h"
-#include "interface/Client/DataHelper.h"
-#include "Interface/Implement/DataObject.h"
+#include "Client/DataHelper.h"
+#include "Implement/DataObject.h"
+#include "Implement/LogUserImpl.h"
 
 #include <complex>
 
@@ -10,25 +11,22 @@ using namespace Yap;
 SliceSelector::SliceSelector(void):
 	ProcessorImpl(L"SliceSelector")
 {
+	LOG_TRACE(L"SliceSelector constructor called.", L"BasicRecon");
 	AddInput(L"Input", YAP_ANY_DIMENSION, DataTypeComplexFloat);
 	AddOutput(L"Output", YAP_ANY_DIMENSION, DataTypeComplexFloat);
 
-	_properties->AddProperty(PropertyInt, L"SliceIndex", L"The index of the slice you want to get.");
-	_properties->SetInt(L"SliceIndex", 3);
+	AddProperty<int>(L"SliceIndex", 3, L"The index of the slice you want to get.");
 }
 
 Yap::SliceSelector::SliceSelector(const SliceSelector & rhs)
 	: ProcessorImpl(rhs)
 {
+	LOG_TRACE(L"SliceSelector constructor called.", L"BasicRecon");
 }
 
 SliceSelector::~SliceSelector()
 {
-}
-
-IProcessor * Yap::SliceSelector::Clone()
-{
-	return new (std::nothrow) SliceSelector(*this);
+	LOG_TRACE(L"SliceSelector destructor called.", L"BasicRecon");
 }
 
 bool Yap::SliceSelector::Input(const wchar_t * name, IData * data)
@@ -36,7 +34,7 @@ bool Yap::SliceSelector::Input(const wchar_t * name, IData * data)
 	assert((data != nullptr) && Yap::GetDataArray<complex<float>>(data) != nullptr);
 	assert(Inputs()->Find(name) != nullptr);
 
-	int slice_index = _properties->GetInt(L"SliceIndex");
+	int slice_index = GetProperty<int>(L"SliceIndex");
 
 	DataHelper input_data(data);
 	Dimensions data_dimentions(data->GetDimensions());
@@ -44,8 +42,10 @@ bool Yap::SliceSelector::Input(const wchar_t * name, IData * data)
 	if (input_data.GetActualDimensionCount() <= 3)
 	{		
 		data_dimentions.SetDimension(DimensionSlice, 1, slice_index);
-		auto output = YapShared(new ComplexFloatData(Yap::GetDataArray<complex<float>>(data)
-			+ slice_index * slice_block_size, data_dimentions));
+		auto output = CreateData<complex<float>>(data, 
+			Yap::GetDataArray<complex<float>>(data)
+			+ slice_index * slice_block_size, data_dimentions, data, false);
+
 		Feed(L"Output", output.get());
 	}
 	else
@@ -72,8 +72,7 @@ bool Yap::SliceSelector::Input(const wchar_t * name, IData * data)
 			(DimensionSlice, slice_index, 1)
 			(Dimension4, 0U, input_data.GetDim4())
 			(DimensionChannel, 0U, input_data.GetCoilCount());
-		auto outdata = YapShared(new ComplexFloatData(
-			slice_channel_data, dimensions, nullptr, true));
+		auto outdata = CreateData<complex<float>>(data, slice_channel_data, dimensions, nullptr, true);
 
 		Feed(L"Output", outdata.get());
 	}

@@ -1,9 +1,10 @@
 #include "stdafx.h"
 #include "SliceIterator.h"
 
-#include "Interface/Client/DataHelper.h"
+#include "Client/DataHelper.h"
 #include <complex>
-#include "Interface/Implement/DataObject.h"
+#include "Implement/DataObject.h"
+#include "Implement/LogUserImpl.h"
 
 using namespace Yap;
 using namespace std;
@@ -11,6 +12,7 @@ using namespace std;
 SliceIterator::SliceIterator(void) :
 	ProcessorImpl(L"SliceIterator")
 {
+	LOG_TRACE(L"SliceIterator constructor called.", L"BasicRecon");
 	AddInput(L"Input", YAP_ANY_DIMENSION, DataTypeComplexFloat | DataTypeUnsignedShort);
 	AddOutput(L"Output", 2, DataTypeComplexFloat | DataTypeUnsignedShort);
 }
@@ -18,17 +20,14 @@ SliceIterator::SliceIterator(void) :
 SliceIterator::SliceIterator( const SliceIterator& rhs)
 	: ProcessorImpl(rhs)
 {
+	LOG_TRACE(L"SliceIterator constructor called.", L"BasicRecon");
 
 }
 
 
 SliceIterator::~SliceIterator(void)
 {
-}
-
-IProcessor* SliceIterator::Clone()
-{
-	return new (std::nothrow) SliceIterator(*this);
+	LOG_TRACE(L"SliceIterator destructor called.", L"BasicRecon");
 }
 
 bool SliceIterator::Input(const wchar_t * name, IData * data)
@@ -50,15 +49,15 @@ bool SliceIterator::Input(const wchar_t * name, IData * data)
 
 		if (helper.GetDataType() == DataTypeComplexFloat)
 		{
-			auto output = YapShared(new ComplexFloatData(
-				Yap::GetDataArray<complex<float>>(data) + i * slice_block_size, slice_data_dimensions));
+			auto output = CreateData<complex<float>>(data,
+				Yap::GetDataArray<complex<float>>(data) + i * slice_block_size, slice_data_dimensions, data);
 
 			Feed(L"Output", output.get());
 		}
 		else
 		{
-			auto output = YapShared(new UnsignedShortData(
-				Yap::GetDataArray<unsigned short>(data) + i * slice_block_size, slice_data_dimensions));
+			auto output = CreateData<unsigned short>(data,
+				Yap::GetDataArray<unsigned short>(data) + i * slice_block_size, slice_data_dimensions, data);
 
 			Feed(L"Output", output.get());
 		}

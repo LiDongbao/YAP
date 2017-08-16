@@ -1,7 +1,6 @@
 #pragma once
 
-#include "Interface/IProperty.h"
-#include "Interface/IProcessor.h"
+#include "Interface/Interfaces.h"
 
 namespace Yap
 {
@@ -12,7 +11,7 @@ namespace Yap
 	
 		void DebugOutput(IProcessor& processor);
 
-		bool DebugProperties(IPropertyIter& properties);
+		bool DebugProperties(IVariableIter& properties);
 
 		bool DebugPlugin(const wchar_t * path);
 

@@ -1,5 +1,6 @@
-#include "stdafx.h"
+ï»¿#include "stdafx.h"
 #include "NiuMriImageReader.h"
+#include "Implement/LogUserImpl.h"
 
 #include <sstream>
 #include <iostream>
@@ -34,19 +35,22 @@ namespace Yap
 NiuMriImageReader::NiuMriImageReader(void) :
 	ProcessorImpl(L"NiuMriImageReader")
 {
+	LOG_TRACE(L"NiuMriImageReader constructor called.", L"BasicRecon");
 	AddInput(L"Input", 0, DataTypeUnknown);
 	AddOutput(L"Output", YAP_ANY_DIMENSION, DataTypeUnsignedShort);
 
-	_properties->AddProperty(PropertyString, L"DataPath", L"Êý¾ÝÎÄ¼þ¼ÐºÍÎÄ¼þÃû¡£");
+	AddProperty<const wchar_t * const>(L"DataPath", L"", L"æ•°æ®æ–‡ä»¶å¤¹å’Œæ–‡ä»¶åã€‚");
 }
 
 Yap::NiuMriImageReader::NiuMriImageReader(const NiuMriImageReader& rhs) :
 	ProcessorImpl(rhs)
 {
+	LOG_TRACE(L"NiuMriImageReader constructor called.", L"BasicRecon");
 }
 
 Yap::NiuMriImageReader::~NiuMriImageReader()
 {
+	LOG_TRACE(L"NiuMriImageReader destructor called.", L"BasicRecon");
 }
 
 bool Yap::NiuMriImageReader::Input(const wchar_t * name, IData * data)
@@ -60,14 +64,9 @@ bool Yap::NiuMriImageReader::Input(const wchar_t * name, IData * data)
 	return true;
 }
 
-IProcessor * Yap::NiuMriImageReader::Clone()
-{
-	return new(nothrow) NiuMriImageReader(*this);
-}
-
 bool Yap::NiuMriImageReader::ReadNiuMriImageData()
 {
-	std::wostringstream output(_properties->GetString(L"DataPath"));
+	std::wostringstream output(GetProperty<const wchar_t * const>(L"DataPath"));
 	wstring data_path = output.str();
 
 	try
@@ -79,7 +78,6 @@ bool Yap::NiuMriImageReader::ReadNiuMriImageData()
 		if (!file.read(reinterpret_cast<char*>(&sections), sizeof(details::NiuMriImageFileHeaderInfo)))
 			return false;
 
-		//
 		int section6_offset = sizeof(details::NiuMriImageFileHeaderInfo) +
 			sections.Section1Size +
 			sections.Section2Size +
@@ -89,18 +87,19 @@ bool Yap::NiuMriImageReader::ReadNiuMriImageData()
 
 		file.seekg(section6_offset, ios::beg);
 
-		int buf[2];
-		file.read(reinterpret_cast<char*>(buf), sizeof(int) * 2);
+		int buf[3];
+		file.read(reinterpret_cast<char*>(buf), sizeof(int) * 3);
 		int dim1 = buf[0];
 		int dim2 = buf[1];
+		int dim3 = buf[2];
 
 		assert(sizeof(unsigned short) == 2);
-		if (dim1 > 2048 || dim2 > 2048)
+		if (dim1 > 2048 || dim2 > 2048 || dim3 > 1024	)
 		{
 			throw std::ifstream::failure("out of range");
 		}
 
-		unsigned buffer_size = dim1 * dim2;
+		unsigned buffer_size = dim1 * dim2 * dim3;
 		unsigned short * buffer = new unsigned short[buffer_size];
 
 		if (!file.read(reinterpret_cast<char*>(buffer), buffer_size * sizeof(unsigned short)))
@@ -111,10 +110,11 @@ bool Yap::NiuMriImageReader::ReadNiuMriImageData()
 
 		Dimensions dimensions;
 		dimensions(DimensionReadout, 0U, dim1)
-			(DimensionPhaseEncoding, 0U, dim2);
+			(DimensionPhaseEncoding, 0U, dim2)
+			(DimensionSlice, 0U, dim3);
 
-		auto data = YapShared(new UnsignedShortData(
-			reinterpret_cast<unsigned short*>(buffer), dimensions, nullptr, true));
+		auto data = CreateData<unsigned short>(nullptr,
+			reinterpret_cast<unsigned short*>(buffer), dimensions, nullptr, true);
 
 		Feed(L"Output", data.get());
 	}

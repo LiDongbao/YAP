@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "SubSampling.h"
-#include "Interface/Client/DataHelper.h"
+#include "Client/DataHelper.h"
+#include "Implement/LogUserImpl.h"
 
 using namespace std;
 using namespace Yap;
@@ -9,20 +10,20 @@ using namespace Yap;
 SubSampling::SubSampling():
 	ProcessorImpl(L"SubSampling")
 {
+	LOG_TRACE(L"SubSampling constructor called.", L"BasicRecon");
 	AddInput(L"Input", YAP_ANY_DIMENSION, DataTypeComplexDouble | DataTypeComplexFloat);
 	AddInput(L"Mask", 2, DataTypeFloat);
 	AddOutput(L"Output", YAP_ANY_DIMENSION, DataTypeComplexDouble | DataTypeComplexFloat);
 }
 
-
+SubSampling::SubSampling(const SubSampling& rhs)
+	:ProcessorImpl(rhs)
+{
+	LOG_TRACE(L"SubSampling constructor called.", L"BasicRecon");
+}
 SubSampling::~SubSampling()
 {
-}
-
-
-IProcessor * Yap::SubSampling::Clone()
-{
-	return new (nothrow) SubSampling(*this);
+	LOG_TRACE(L"SubSampling destructor called.", L"BasicRecon");
 }
 
 bool Yap::SubSampling::Input(const wchar_t * port, IData * data)
@@ -48,7 +49,7 @@ bool Yap::SubSampling::Input(const wchar_t * port, IData * data)
 			(Dimension4, 0U, 1)
 			(DimensionChannel, 0U, 1);
 
-		auto outdata = YapShared(new ComplexFloatData(&dimensions));
+		auto outdata = CreateData<complex<float>>(data, &dimensions);
 
 		GetSubSampledData(GetDataArray<complex<float>>(data), GetDataArray<float>(_mask.get()),
 			GetDataArray<complex<float>>(outdata.get()), width, height);

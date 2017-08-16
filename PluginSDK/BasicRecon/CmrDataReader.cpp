@@ -1,5 +1,6 @@
-
+ï»¿
 #include "CmrDataReader.h"
+#include "Implement/LogUserImpl.h"
 
 #include <sstream>
 #include <iostream>
@@ -32,23 +33,25 @@ namespace Yap
 CmrDataReader::CmrDataReader(void) :
 	ProcessorImpl(L"CmrRawDataReader")
 {
+	LOG_TRACE(L"CmrDataReader constructor called.", L"BasicRecon");
+	AddInput(L"Input", 0, DataTypeUnknown);
+	AddOutput(L"Output", YAP_ANY_DIMENSION, DataTypeComplexFloat);
+
+	AddProperty<const wchar_t * const> (L"DataPath", L"", L"åŒ…å«åŸå§‹æ•°æ®æ–‡ä»¶çš„æ–‡ä»¶å¤¹ã€‚");
+	AddProperty<int>(L"ChannelCount", 4, L"é€šé“æ•°");
+	AddProperty<int>(L"ChannelSwitch", 0xf, L"é€šé“å¼€å…³æŒ‡ç¤ºå€¼"); // 00001111, select all four channels.
+	AddProperty<int>(L"GroupCount", 1, L"åˆ†ç»„æ‰«ææ•°");
 }
 
 CmrDataReader::CmrDataReader(const CmrDataReader& rhs)
 	: ProcessorImpl(rhs)
 {
-	AddInput(L"Input", 0, DataTypeUnknown);
-	AddOutput(L"Output", YAP_ANY_DIMENSION, DataTypeComplexFloat);
+	LOG_TRACE(L"CmrDataReader constructor called.", L"BasicRecon");
+}
 
-	_properties->AddProperty(PropertyString, L"DataPath",  L"°üº¬Ô­Ê¼Êı¾İÎÄ¼şµÄÎÄ¼ş¼Ğ¡£");
-	_properties->AddProperty(PropertyInt, L"ChannelCount",  L"Í¨µÀÊı");
-	_properties->AddProperty(PropertyInt, L"ChannelSwitch",  L"Í¨µÀ¿ª¹ØÖ¸Ê¾Öµ");
-	_properties->AddProperty(PropertyInt, L"GroupCount",  L"·Ö×éÉ¨ÃèÊı");}
-
-
-IProcessor * CmrDataReader::Clone()
+CmrDataReader::~CmrDataReader()
 {
-	return new(nothrow) CmrDataReader(*this);
+	LOG_TRACE(L"CmrDataReader destructor called.", L"BasicRecon");
 }
 
 bool CmrDataReader::Input(const wchar_t * name, IData * data)
@@ -56,12 +59,12 @@ bool CmrDataReader::Input(const wchar_t * name, IData * data)
 	// Should not pass in data to start raw data file reading.
 	assert(data == nullptr);
 
-	int channel_count = _properties->GetInt(L"ChannelCount");
+	int channel_count = GetProperty<int>(L"ChannelCount");
 	assert(channel_count > 0 && channel_count <= 32);
 	for (int channel_index = 0; channel_index < channel_count; ++channel_index)
 	{
-		unsigned int channel_mask = (1 << channel_index); // Ã¿´ÎÑ­»·¶¼ºÍ0»ò£¬µÃµ½Ä³Í¨µÀ0001(1),0010(2),0100(4),1000(8)
-		bool channel_used = ((channel_mask & _properties->GetInt(L"ChannelSwitch")) == channel_mask);    // channel_maskÖ»ÒªºÍ¸øµÄÍ¨µÀÒ»Ñù£¬¾Í±Ø¶¨µÈÓÚchannel_mask×Ô¼º
+		unsigned int channel_mask = (1 << channel_index); // æ¯æ¬¡å¾ªç¯éƒ½å’Œ0æˆ–ï¼Œå¾—åˆ°æŸé€šé“0001(1),0010(2),0100(4),1000(8)
+		bool channel_used = ((channel_mask & GetProperty<int>(L"ChannelSwitch")) == channel_mask);    // channel_maskåªè¦å’Œç»™çš„é€šé“ä¸€æ ·ï¼Œå°±å¿…å®šç­‰äºchannel_maskè‡ªå·±
 
 		if (channel_used)
 		{
@@ -77,13 +80,13 @@ bool CmrDataReader::Input(const wchar_t * name, IData * data)
 bool CmrDataReader::ReadRawData(unsigned int channel_index)
 {
 	std::wostringstream output;
-	output << _properties->GetString(L"DataPath") << L"\\ChannelData"
+	output << GetProperty<const wchar_t * const>(L"DataPath") << L"\\ChannelData"
 		<< setfill(L'0') << setw(2) << channel_index + 1 << L".fid";
 
 	std::vector<float*> channel_data_buffer;
 	std::vector<unsigned int> slices;
-	unsigned int width, height, dim4, total_slice_count = 0; // ¶ÔÓÚÎ´½øĞĞÀÛ¼Ó´¦ÀíµÄÊı¾İ£¬µÃµ½µÄsliceÊµ¼ÊÊÇ ÕæÊµµÄslice  ¡Á Êµ¼ÊÀÛ¼Ó´ÎÊı¡£
-	int group_count = _properties->GetInt(L"GroupCount");
+	unsigned int width, height, dim4, total_slice_count = 0; // å¯¹äºæœªè¿›è¡Œç´¯åŠ å¤„ç†çš„æ•°æ®ï¼Œå¾—åˆ°çš„sliceå®é™…æ˜¯ çœŸå®çš„slice  Ã— å®é™…ç´¯åŠ æ¬¡æ•°ã€‚
+	int group_count = GetProperty<int>(L"GroupCount");
 	if (group_count == 0)
 	{
 		group_count = 1;
@@ -142,8 +145,8 @@ bool CmrDataReader::ReadRawData(unsigned int channel_index)
 		(Dimension4, 0U, dim4)
 		(DimensionChannel, channel_index, 1);
 
-	auto output_data = YapShared(new ComplexFloatData(
-		reinterpret_cast<complex<float>*>(raw_data_buffer), dimensions, nullptr, true));
+	auto output_data = CreateData<complex<float>>(nullptr,
+		reinterpret_cast<complex<float>*>(raw_data_buffer), dimensions, nullptr, true);
 
 	Feed(L"Output", output_data.get());
 
@@ -174,7 +177,7 @@ float* CmrDataReader::ReadEcnuFile(const wchar_t * file_path,
 	file.seekg(sizeof(details::EcnuRawSections) + sections.Section1Size + sections.Section2Size + sections.Section3Size,
 		ios::beg);
 
-	// Version 1.5701001ÒÔÉÏ°æ±¾, ÔÊĞí¸¡µãÎó²î
+	// Version 1.5701001ä»¥ä¸Šç‰ˆæœ¬, å…è®¸æµ®ç‚¹è¯¯å·®
 	if (sections.FileVersion - 1.5701 > 0.00000005)
 	{
 		int buf[5];
@@ -187,7 +190,7 @@ float* CmrDataReader::ReadEcnuFile(const wchar_t * file_path,
 	}
 	else
 	{
-		// 1.5702°æ±¾ÒÔÉÏµÄÆ×ÒÇ°æ±¾£¬Êı¾İÔö¼Óµ½5Î¬£¬Ä¿Ç°ÔİÊ±µÚ5Î¬Îª1.
+		// 1.5702ç‰ˆæœ¬ä»¥ä¸Šçš„è°±ä»ªç‰ˆæœ¬ï¼Œæ•°æ®å¢åŠ åˆ°5ç»´ï¼Œç›®å‰æš‚æ—¶ç¬¬5ç»´ä¸º1.
 		int buf[4];
 		file.read(reinterpret_cast<char*>(buf), sizeof(int) * 4);
 		width = buf[0];

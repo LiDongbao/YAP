@@ -1,7 +1,8 @@
 #include "stdafx.h"
 #include "NLM.h"
-#include "interface/Client/DataHelper.h"
-#include "Interface/Implement/DataObject.h"
+#include "Client/DataHelper.h"
+#include "Implement/DataObject.h"
+#include "Implement/LogUserImpl.h"
 
 using namespace std;
 using namespace Yap;
@@ -10,17 +11,20 @@ using namespace arma;
 NLM::NLM(void):
 	ProcessorImpl(L"NLM")
 {
+	LOG_TRACE(L"NLM constructor called.", L"BasicRecon");
 	AddInput(L"Input", 2, DataTypeFloat);
 	AddOutput(L"Output", 2, DataTypeFloat);
 }
 
-NLM::~NLM()
+NLM::NLM(const NLM& rhs)
+	:ProcessorImpl(rhs)
 {
+	LOG_TRACE(L"NLM constructor called.", L"BasicRecon");
 }
 
-IProcessor * Yap::NLM::Clone()
+NLM::~NLM()
 {
-	return new (std::nothrow) NLM(*this);
+	LOG_TRACE(L"NLM destructor called.", L"BasicRecon");
 }
 
 bool Yap::NLM::Input(const wchar_t * name, IData * data)
@@ -36,44 +40,41 @@ bool Yap::NLM::Input(const wchar_t * name, IData * data)
 	DataHelper input_data(data);
 	unsigned int width = input_data.GetWidth();
 	unsigned int height = input_data.GetHeight();
-	Dimensions dims;
-	dims(DimensionReadout, 0, width)
-		(DimensionPhaseEncoding, 0, height);
 
 	float * input_img = GetDataArray<float>(data);
-	auto output_img = YapShared(new FloatData(&dims));
+	auto output_img = CreateData<float>(data);
 
 	float sigma = GetSigma(input_img, width, height);
 
 	unsigned int sw_r, pl_r;
 	float h;
 
-	if (sigma > 0.0f && sigma <= 15.0f) {
+	if (sigma > 0.0f && sigma <= 15.0f) 
+	{
 		pl_r = 1;
 		sw_r = 10;
 		h = 0.4f;
-
 	}
-	else if (sigma > 15.0f && sigma <= 30.0f) {
+	else if (sigma > 15.0f && sigma <= 30.0f) 
+	{
 		pl_r = 2;
 		sw_r = 10;
 		h = 0.4f;
-
 	}
-	else if (sigma > 30.0f && sigma <= 45.0f) {
+	else if (sigma > 30.0f && sigma <= 45.0f) 
+	{
 		pl_r = 3;
 		sw_r = 17;
 		h = 0.35f;
-
 	}
-	else if (sigma > 45.0f && sigma <= 75.0f) {
+	else if (sigma > 45.0f && sigma <= 75.0f) 
+	{
 	    pl_r = 4;
 		sw_r = 17;
 		h = 0.35f;
-
 	}
-	else if (sigma <= 100.0f) {
-
+	else if (sigma <= 100.0f) 
+	{
 		pl_r = 5;
 		sw_r = 17;
 		h = 0.30f;

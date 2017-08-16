@@ -3,7 +3,7 @@
 #ifndef JpegExporter_h__20160814
 #define JpegExporter_h__20160814
 
-#include "Interface/Implement/ProcessorImpl.h"
+#include "Implement/ProcessorImpl.h"
 
 namespace Yap
 {
@@ -12,6 +12,7 @@ namespace Yap
 	class JpegExporter :
 		public ProcessorImpl
 	{
+		IMPLEMENT_SHARED(JpegExporter)
 	public:
 		JpegExporter();
 		JpegExporter(const JpegExporter& rhs);
@@ -19,7 +20,6 @@ namespace Yap
 	protected:
 		~JpegExporter();
 
-		virtual IProcessor* Clone() override;
 		virtual bool Input(const wchar_t * name, IData * data) override;
 
 		std::shared_ptr<details::JpegExporterImp> _impl;

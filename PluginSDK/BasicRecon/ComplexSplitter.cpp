@@ -1,4 +1,5 @@
-#include "ComplexSplitter.h"
+ï»¿#include "ComplexSplitter.h"
+#include "Implement/LogUserImpl.h"
 
 using namespace std;
 using namespace Yap;
@@ -6,6 +7,7 @@ using namespace Yap;
 ComplexSplitter::ComplexSplitter() :
 	ProcessorImpl(L"ComplexSplitter")
 {
+	LOG_TRACE(L"ComplexSplitter constructor called.", L"BasicRecon");
 	AddInput(L"Input", YAP_ANY_DIMENSION, DataTypeComplexDouble);
 	AddOutput(L"Real", YAP_ANY_DIMENSION, DataTypeDouble);
 	AddOutput(L"Imaginary", YAP_ANY_DIMENSION, DataTypeDouble);
@@ -13,6 +15,7 @@ ComplexSplitter::ComplexSplitter() :
 
 ComplexSplitter::~ComplexSplitter()
 {
+	LOG_TRACE(L"ComplexSplitter destructor called.", L"BasicRecon");
 }
 
 bool ComplexSplitter::Input(const wchar_t * port, IData * data)
@@ -28,13 +31,13 @@ bool ComplexSplitter::Input(const wchar_t * port, IData * data)
 	auto want_real = OutportLinked(L"Real");
 	auto want_imaginary = OutportLinked(L"Imaginary");
 
-	//one, two and three dimension(s), ANY¡¡DIMENSION
+	//one, two and three dimension(s), ANYã€€DIMENSION
 	auto size = static_cast<unsigned int> (input_data.GetDataSize());
 	auto data_array = GetDataArray<complex<double>>(data);
 	if (want_real && want_imaginary)
 	{
-		auto real_data = YapShared(new Yap::DoubleData(data->GetDimensions())) ;
-		auto imaginary_data = YapShared(new Yap::DoubleData(data->GetDimensions()));
+		auto real_data = CreateData<double>(data) ;
+		auto imaginary_data = CreateData<double>(data);
 
 		Split(data_array, GetDataArray<double>(real_data.get()), GetDataArray<double>(imaginary_data.get()), size);
 
@@ -43,13 +46,13 @@ bool ComplexSplitter::Input(const wchar_t * port, IData * data)
 	}
 	else if (want_real)
 	{
-		auto real_data = YapShared(new Yap::DoubleData(data->GetDimensions()));
+		auto real_data = CreateData<double>(data);
 		ExtractReal(data_array, GetDataArray<double>(real_data.get()), size);
 		Feed(L"Real", real_data.get());
 	}
 	else if (want_imaginary)
 	{
-		auto imaginary_data = YapShared(new Yap::DoubleData(data->GetDimensions()));
+		auto imaginary_data = CreateData<double>(data);
 		ExtractImaginary(data_array, GetDataArray<double>(imaginary_data.get()), size);
 		Feed(L"Imaginary", imaginary_data.get());
 	}
@@ -71,9 +74,10 @@ void Yap::ComplexSplitter::Split(std::complex<double> * data,
 	}
 }
 
-Yap::IProcessor * Yap::ComplexSplitter::Clone()
+Yap::ComplexSplitter::ComplexSplitter(const ComplexSplitter& rhs)
+	:ProcessorImpl(rhs)
 {
-	return new(nothrow) ComplexSplitter(*this);
+	LOG_TRACE(L"ComplexSplitter constructor called.", L"BasicRecon");
 }
 
 void ComplexSplitter::ExtractReal(std::complex<double> * data, double * real, size_t size)

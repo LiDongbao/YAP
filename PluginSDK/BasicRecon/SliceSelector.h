@@ -3,22 +3,22 @@
 #ifndef SliceSelector_h__20160814
 #define SliceSelector_h__20160814
 
-#include "Interface/Implement/ProcessorImpl.h"
+#include "Implement/ProcessorImpl.h"
 
 namespace Yap
 {
 	class SliceSelector :
 		public ProcessorImpl
 	{
+		IMPLEMENT_SHARED(SliceSelector)
 	public:
 		SliceSelector(void);
 		SliceSelector(const SliceSelector& rhs);
-		
-		virtual IProcessor * Clone() override;
-		virtual bool Input(const wchar_t * name, IData * data) override;
 
 	protected:
 		~SliceSelector();
+
+		virtual bool Input(const wchar_t * name, IData * data) override;
 	};
 }
 #endif // SliceSelector_h__

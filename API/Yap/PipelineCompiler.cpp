@@ -1,7 +1,5 @@
-#include "PipelineCompiler.h"
+Ôªø#include "PipelineCompiler.h"
 #include "PipelineConstructor.h"
-
-#include <boost/assign/list_of.hpp>
 
 #include <cassert>
 #include <fstream>
@@ -9,364 +7,154 @@
 #include <sstream>
 #include <map>
 #include <ctype.h>
+#include <cassert>
 
 using namespace Yap;
 using namespace std;
 
-void Statement::Reset()
-{
-	_type = StatementUnknown;
-	_tokens.clear();
-	_iter = _tokens.begin();
-}
+PipelineCompiler::PipelineCompiler(void) :
+	_preprocessor(make_shared<Preprocessor>(PreprocessPipeline))
+{}
 
-map<TokenType, wstring> token_map = boost::assign::map_list_of
-	(TokenOperatorPointer, L"->")
-	(TokenOperatorLink, L"<=>")
-	(TokenOperatorDot, L".")
-	(TokenOperatorAssign, L"=")
-	(TokenComma, L",")
-	(TokenSemiColon, L";")
-	(TokenLeftBrace, L"{")
-	(TokenRightParenthesis, L"}")
-	(TokenLeftParenthesis, L"(")
-	(TokenRightParenthesis, L")")
-	(TokenOperatorMinus, L"-")
-	(TokenId, L"identifier")
-	(TokenStringLiteral, L"string literal")
-	(TokenNumericLiteral, L"numeric literal")
-	(TokenKeyword, L"keyword");
-
-/// »Áπ˚µ¸¥˙∆‰÷∏œÚµƒtokenµƒ¿‡–Õ≤ª «type£¨‘Ú≈◊≥ˆ±‡“Î¥ÌŒÛ°£
-void Statement::CheckFor(TokenType type, bool move_next)
-{
-	if (_iter == _tokens.end())
-	{
-		throw (CompileError(*_iter, CompileErrorUnexpectedEndOfStatement, L"≤ªÕÍ’˚µƒ”Ôæ‰°£"));
-	}
-
-	if ((_iter->type != type) &&
-		!(type == TokenId && _iter->type == TokenKeyword && _iter->text == L"self")) // treat keyword 'self' as id
-	{
-		wstring message = L"Incorrect token type, " + token_map[type] + L" expected.";
-		throw (CompileError(*_iter, CompileErrorTokenType, message));
-	}
-
-	if (move_next)
-	{
-        ++_iter;
-	}
-}
-
-/// ºÏ≤Èµ¸¥˙∆˜÷∏œÚµƒtoken «∑Ò÷∏∂®µƒ¿‡–Õ°£∏√∫Ø ˝≤ª“˝∆µ¸¥˙∆˜±‰ªØ°£
-bool Statement::IsType(TokenType type)
-{
-	return _iter->type == type;
-}
-
-///  ‘ÕºÃ·»°“ª∏ˆId£¨µ¸¥˙∆˜“∆∂ØµΩÃ·»°ƒ⁄»›÷Æ∫Û°£
-std::wstring Statement::GetId()
-{
-	CheckFor(TokenId, false);
-
-	return (_iter++)->text;
-}
-
-std::wstring Statement::GetLiteralValue()
-{
-	if (AtEnd() ||
-		(_iter->type != TokenStringLiteral && _iter->type != TokenNumericLiteral &&
-		!(_iter->type == TokenKeyword && (_iter->text == L"true" || _iter->text == L"false"))))
-	{
-		throw CompileError(*_iter, CompileErrorValueExpected, L"Property value expected.");
-	}
-
-	return (_iter++)->text;
-}
-
-///  ‘ÕºÃ·»°¥¶¿Ì∆˜/≥…‘±£® Ù–‘ªÚ’ﬂ∂Àø⁄£©∂‘£¨µ¸¥˙∆˜“∆∂ØµΩÃ·»°ƒ⁄»›÷Æ∫Û°£
-std::pair<std::wstring, std::wstring> Statement::GetProcessorMember(bool empty_member_allowed)
-{
-	pair<wstring, wstring> result;
-	result.first = GetId();
-
-	if (empty_member_allowed)
-	{
-		if (IsType(TokenOperatorDot))
-		{
-			++_iter;
-			result.second = GetId();
-		}
-	}
-	else
-	{
-		CheckFor(TokenOperatorDot, true);
-		result.second = GetId();
-	}
-	return result;
-}
-
-///  ‘ÕºÃ·»°≤Œ ˝id°£µ¸¥˙∆˜“∆∂ØµΩÃ·»°ƒ⁄»›÷Æ∫Û°£
-std::wstring Statement::GetParamId()
-{
-	wstring param_id;
-	bool id_expected = true;
-	while (_iter != _tokens.end() && _iter->type != TokenComma && _iter->type != TokenRightParenthesis)
-	{
-		if (!((id_expected && _iter->type == TokenId) || (!id_expected && _iter->type == TokenOperatorDot)))
-		{
-			throw CompileError(*_iter, CompileErrorParamIdInvalid, L"≤Œ ˝Idµƒ–Œ Ω≤ª∫œ∑®°£");
-		}
-		param_id += (_iter++)->text;
-		id_expected = !id_expected;
-	}
-
-	return param_id;
-}
-
-Yap::Statement::Statement(PipelineConstructor& constructor) :
-	_constructor(constructor), 
-	_type(StatementUnknown)
-{
-	Reset();
-}
-
-bool Yap::Statement::IsEmpty()
-{
-	return _tokens.empty();
-}
-
-void Yap::Statement::SetType(StatementType type)
-{
-	_type = type;
-}
-
-Yap::StatementType Yap::Statement::GetType() const
-{
-	return _type;
-}
-
-size_t Yap::Statement::GetTokenCount() const
-{
-	return _tokens.size();
-}
-
-void Yap::Statement::AddToken(const Token& token)
-{
-	_tokens.push_back(token);
-}
-
-const Yap::Token& Yap::Statement::GetToken(unsigned int index)
-{
-	assert(index < _tokens.size()); 
-	return _tokens[index];
-}
-
-const Yap::Token& Yap::Statement::GetCurrentToken()
-{
-	return *_iter;
-}
-
-const Yap::Token& Yap::Statement::GetLastToken() const
-{
-	return *(_tokens.end() - 1);
-}
-
-bool Yap::Statement::AtEnd() const
-{
-	return _iter == _tokens.end();
-}
-
-std::wstring Yap::Statement::GetVariableId()
-{
-	wstring variable_id;
-	bool id_expected = true;
-	while (_iter != _tokens.end() && _iter->type != TokenComma && _iter->type != TokenRightParenthesis)
-	{
-		if ((!id_expected && _iter->type != TokenOperatorDot) || (id_expected && _iter->type != TokenId))
-		{
-			throw CompileError(*_iter, CompileErrorParamIdInvalid, L"Invalid format for system variable id.");
-		}
-		variable_id += (_iter++)->text;
-		id_expected = !id_expected;
-	}
-	if (id_expected)
-	{
-		throw CompileError(*(_iter - 1), CompileErrorParamIdInvalid, L"Invalid format for system variable id.");
-	}
-
-	return variable_id;
-}
-
-bool Statement::Process()
-{
-	switch (_type)
-	{
-	case StatementImport:
-		return ProcessImport();
-	case StatementAssign:
-		return ProcessAssignment();
-	case StatementDeclaration:
-		return ProcessDeclaration();
-	case StatementPortLink:
-		return ProcessPortLink();
-	case StatementPropertyLink:
-		return ProcessPropertyLink();
-	default:
-		assert(0);
-		return false;
-	}
-}
+PipelineCompiler::~PipelineCompiler(void)
+{}
 
 /**
-µ¸¥˙∆˜÷∏œÚƒ£øÈ√˚≥∆°£
+	Process an "import" statement in the file.
 */
-bool Statement::ProcessImport()
+bool PipelineCompiler::ProcessImport(Tokens& tokens)
 {
-	assert(GetType() == StatementImport);
-	assert(!IsEmpty());
+	Tokens::Guard guard(tokens);
 
-	if (GetTokenCount() > 2)
+	tokens.AssertToken(TokenKeywordImport, true);
+	wstring path = tokens.GetStringLiteral();
+
+	if (!_constructor->LoadModule(path.c_str()))
 	{
-		throw CompileError(GetToken(2), CompileErrorSemicolonExpected, L"Semicolon expected.");
+		wstring output = wstring(L"Failed to load specified plug-in. "
+								 "Check to see if the file and its dependent files exist.") + path;
+		throw CompileError(tokens.GetCurrentToken(), CompileErrorLoadModule, output);
 	}
 
-	_iter = _tokens.begin();
-	++_iter;	// bypass 'import'
-
-	const Token& token = GetCurrentToken();
-	if (GetTokenCount() == 1 || token.type != TokenStringLiteral)
-	{
-		throw CompileError(token, CompileErrorStringExpected,
-			L"String literal should be used to specify plugin to import.");
-	}
-
-	if (!_constructor.LoadModule(token.text.c_str()))
-	{
-		wstring output = wstring(L"Œﬁ∑®º”‘ÿƒ£øÈŒƒº˛£∫") + token.text;
-		throw CompileError(token, CompileErrorLoadModule, output);
-	}
+	tokens.AssertToken(TokenSemiColon, false); 
 
 	return true;
 }
 
 /**
-µ¸¥˙∆˜÷∏œÚµ⁄“ª∏ˆ‘™Àÿ°£“ª∞„–Œ Ω «£∫
-process1.output_port->process2.input_port;
-∆‰÷–.output_port∫Õ.input_port «ø…—°µƒ£¨»Áπ˚ °¬‘£¨‘Ú π”√»± °µƒOutput∫ÕInput°£
+Port link is in the form of: process1.output_port->process2.input_port;
+If the output_port and input_port is not specified, they default to "Output" and "Input" respectively.
 */
-bool Statement::ProcessPortLink()
+bool PipelineCompiler::ProcessPortLink(Tokens& statement)
 {
-	_iter = _tokens.begin();
-	auto source_processor = GetId();
+	assert(_constructor);
+	Tokens::Guard guard(statement);
+
+	auto source_processor = statement.GetId();
 
 	wstring source_port(L"Output");
-	if (GetCurrentToken().type == TokenOperatorDot)
+	if (statement.IsTokenOfType(TokenOperatorDot, true))
 	{
-		++_iter;
-		source_port = GetId();
+		source_port = statement.GetId();
 	}
 
-	CheckFor(TokenOperatorPointer, true);
+	statement.AssertToken(TokenOperatorPortLink, true);
 
-	auto dest_processor = GetId();
-
+	auto dest_processor = statement.GetId();
 	wstring dest_port(L"Input");
-
-
-	if (!AtEnd() && GetCurrentToken().type == TokenOperatorDot)
+	if (statement.IsTokenOfType(TokenOperatorDot, true))
 	{
-		++_iter;
-		dest_port = GetId();
+		dest_port = statement.GetId();
 	}
 
 	if (source_processor == L"self")
 	{
 		if (dest_processor == L"self")
 		{
-			throw CompileError(GetCurrentToken(), CompileErrorSelfLink,
+			throw CompileError(statement.GetCurrentToken(), CompileErrorSelfLink,
 				L"Can not link the output of the pipeline to the input of itself.");
 		}
 		else
 		{
-			return _constructor.MapInput(source_port.c_str(), dest_processor.c_str(), dest_port.c_str());
+			return _constructor->MapInput(source_port.c_str(), dest_processor.c_str(), dest_port.c_str());
 		}
 	}
 	else if (dest_processor == L"self")
 	{
-		return _constructor.MapOutput(dest_port.c_str(), source_processor.c_str(), source_port.c_str());
+		return _constructor->MapOutput(dest_port.c_str(), source_processor.c_str(), source_port.c_str());
 	}
 	else
 	{
-		return _constructor.Link(source_processor.c_str(), source_port.empty() ? L"Output" : source_port.c_str(),
+		return _constructor->Link(source_processor.c_str(), source_port.empty() ? L"Output" : source_port.c_str(),
 			dest_processor.c_str(), dest_port.empty() ? L"Input" : dest_port.c_str());
 	}
 }
 
-
-bool Statement::ProcessDeclaration()
+bool PipelineCompiler::ProcessDeclaration(Tokens& statement)
 {
-	assert(_type == StatementDeclaration);
-	assert(GetTokenCount() >= 2);
+	assert(_constructor);
 
-	_iter = _tokens.begin();
+	Tokens::Guard guard(statement);
 
-	wstring class_id = GetId();
-	wstring instance_id = GetId();
+	wstring class_id = statement.GetId();
+	wstring instance_id = statement.GetId();
 
-	if (_constructor.InstanceIdExists(instance_id.c_str()))
+	if (_constructor->InstanceIdExists(instance_id.c_str()))
 	{
-		throw CompileError(GetToken(1), CompileErrorIdExists,
+		throw CompileError(statement.GetToken(1), CompileErrorIdExists,
 			wstring(L"Instance id specified for the processor already exists: ") + instance_id);
 	}
 
-	if (AtEnd())
+	if (statement.IsTokenOfType(TokenSemiColon, false))
 	{
-		_constructor.CreateProcessor(class_id.c_str(), instance_id.c_str());
+		_constructor->CreateProcessor(class_id.c_str(), instance_id.c_str());
 	}
-	else if (GetCurrentToken().type != TokenLeftParenthesis)
+	else if (!statement.IsTokenOfType(TokenLeftParenthesis, true)) 
 	{
-		throw CompileError(GetCurrentToken(), CompileErrorSemicolonExpected,
+		// must be the parameter list.
+		throw CompileError(statement.GetCurrentToken(), CompileErrorSemicolonExpected,
 			L"Semicolon or left parenthesis expected.");
 	}
 	else
 	{
-		_constructor.CreateProcessor(class_id.c_str(), instance_id.c_str());
+		_constructor->CreateProcessor(class_id.c_str(), instance_id.c_str());
 		for (;;)
 		{
-			++_iter;
-			wstring property = GetId();
+			wstring property = statement.GetId();
 
-			if (GetCurrentToken().type == TokenOperatorAssign)
+			if (statement.IsTokenOfType(TokenOperatorAssign, true))
 			{
-				++_iter;
-				wstring value = GetLiteralValue();
-				_constructor.SetProperty(instance_id.c_str(), property.c_str(), value.c_str());
+				wstring value = statement.GetLiteralValue();
+				_constructor->SetProperty(instance_id.c_str(), property.c_str(), value.c_str());
 			}
-			else if (GetCurrentToken().type == TokenOperatorLink)
+			else if (statement.IsTokenOfType(TokenOperatorInOutMapping, true))
 			{
-				++_iter;
-				wstring variable_id = GetVariableId();
-
-				_constructor.LinkProperty(instance_id.c_str(), property.c_str(), variable_id.c_str());
+				wstring variable_id = statement.GetVariableId();
+				_constructor->MapProperty(instance_id.c_str(), property.c_str(), variable_id.c_str(), true, true);
+			}
+			else if (statement.IsTokenOfType(TokenOperatorInMapping, true))
+			{
+				wstring variable_id = statement.GetVariableId();
+				_constructor->MapProperty(instance_id.c_str(), property.c_str(), variable_id.c_str(), true, false);
+			}
+			else if (statement.IsTokenOfType(TokenOperatorOutMapping, true))
+			{
+				wstring variable_id = statement.GetVariableId();
+				_constructor->MapProperty(instance_id.c_str(), property.c_str(), variable_id.c_str(), false, true);
 			}
 			else
 			{
-				throw CompileError(GetCurrentToken(), CompileErrorPropertyOperatorExpected,
+				throw CompileError(statement.GetCurrentToken(), CompileErrorPropertyOperatorExpected,
 					L"Property operator must be specified, you can use either \'=\' or \'<=>\'.");
 			}
 
-			if (AtEnd())
-			{
-				throw CompileError(GetLastToken(), CompileErrorRightParenthesisExpected, L"Right parenthesis expected.");
-			}
-			else if (GetCurrentToken().type == TokenRightParenthesis)
+			if (statement.IsTokenOfType(TokenRightParenthesis, true))
 			{
 				break;
 			}
-			else if (GetCurrentToken().type != TokenComma)
+			else if (!statement.IsTokenOfType(TokenComma, true))
 			{
-				throw CompileError(GetCurrentToken(), CompileErrorCommaExpected,
+				throw CompileError(statement.GetCurrentToken(), CompileErrorCommaExpected,
 					L"Comma \',\' or right parenthesis \')\' expected.");
 			}
 		}
@@ -375,81 +163,65 @@ bool Statement::ProcessDeclaration()
 	return true;
 }
 
-bool Statement::ProcessPropertyLink()
+bool PipelineCompiler::ProcessPropertyMapping(Tokens& statement)
 {
-	assert(_type == StatementPropertyLink);
+	assert(_constructor);
+	Tokens::Guard guard(statement);
 
-	_iter = _tokens.begin();
-
-	wstring processor_instance_id = GetId();
-	if (!_constructor.InstanceIdExists(processor_instance_id.c_str()))
+	wstring processor_instance_id = statement.GetId();
+	if (!_constructor->InstanceIdExists(processor_instance_id.c_str()))
 	{
-		throw CompileError(_tokens[0], CompileErrorProcessorNotFound,
+		throw CompileError(statement.GetToken(0), CompileErrorProcessorNotFound,
 			wstring(L"Processor not found: ") + processor_instance_id);
 	}
 
-	CheckFor(TokenOperatorDot, true);
-	wstring property = GetId();
+	statement.AssertToken(TokenOperatorDot, true);
+	wstring property = statement.GetId();
 
-	CheckFor(TokenOperatorLink, true);
-	wstring variable_id = GetVariableId();
+	bool input = false, output = false;
+	if (statement.IsTokenOfType(TokenOperatorInOutMapping, true))
+	{
+		input = true;
+		output = true;
+	}
+	else if (statement.IsTokenOfType(TokenOperatorInMapping, true))
+	{
+		input = true;
+	}
+	else if (statement.IsTokenOfType(TokenOperatorOutMapping, true))
+	{
+		output = true;
+	}
+	else
+	{
+		throw CompileErrorTokenType(statement.GetCurrentToken(), TokenOperatorInOutMapping);
+	}
 
-	return _constructor.LinkProperty(processor_instance_id.c_str(), property.c_str(), variable_id.c_str());
+	wstring variable_id = statement.GetVariableId();
+
+	return _constructor->MapProperty(processor_instance_id.c_str(), property.c_str(), variable_id.c_str(), input, output);
 }
 
-bool Statement::ProcessAssignment()
+bool PipelineCompiler::ProcessAssignment(Tokens& statement)
 {
-	assert(_type == StatementAssign);
+	assert(_constructor);
+	Tokens::Guard guard(statement);
 
-	_iter = _tokens.begin();
-
-	wstring processor_instance_id = GetId();
-	if (!_constructor.InstanceIdExists(processor_instance_id.c_str()))
+	wstring processor_instance_id = statement.GetId();
+	if (!_constructor->InstanceIdExists(processor_instance_id.c_str()))
 	{
-		throw CompileError(GetToken(0), CompileErrorProcessorNotFound,
+		throw CompileError(statement.GetToken(0), CompileErrorProcessorNotFound,
 			wstring(L"Processor not found: ") + processor_instance_id);
 	}
 
-	CheckFor(TokenOperatorDot, true);
-	wstring property = GetId();
+	statement.AssertToken(TokenOperatorDot, true);
+	wstring property = statement.GetId();
 
-	CheckFor(TokenOperatorAssign, true);
-	wstring value = GetLiteralValue();
+	statement.AssertToken(TokenOperatorAssign, true);
+	wstring value = statement.GetLiteralValue();
 
-	return _constructor.SetProperty(processor_instance_id.c_str(), property.c_str(), value.c_str());
+	return _constructor->SetProperty(processor_instance_id.c_str(), property.c_str(), value.c_str());
 }
-
-void Yap::Statement::DebugOutput(wostream& output)
-{
-	static map<StatementType, wstring> statment_label = boost::assign::map_list_of
-	(StatementImport, L"Import")
-		(StatementAssign, L"Assign")
-		(StatementDeclaration, L"Decl")
-		(StatementPortLink, L"PortLink")
-		(StatementPropertyLink, L"PropertyLink");
-
-	output << statment_label[_type] << L"\t\t: ";
-
-	for (auto token : _tokens)
-	{
-		output << token.text << " ";
-	}
-
-	output << "\n";
-}
-
-PipelineCompiler::PipelineCompiler(void)
-{
-	_key_words.insert(L"self");
-	_key_words.insert(L"import");
-	_key_words.insert(L"true");
-	_key_words.insert(L"false");
-}
-
-PipelineCompiler::~PipelineCompiler(void)
-{
-}
-
 
 Yap::SmartPtr<CompositeProcessor> Yap::PipelineCompiler::Compile(const wchar_t * text)
 {
@@ -468,7 +240,7 @@ Yap::SmartPtr<CompositeProcessor> PipelineCompiler::CompileFile(const wchar_t * 
 	{
 		wstring message = wstring(L"Failed to open script file: ") + path;
 		// throw CompileError(Token(), CompileErrorFailedOpenFile, message);
-        return SmartPtr<CompositeProcessor>();
+		return SmartPtr<CompositeProcessor>();
 	}
 
 	return DoCompile(script_file);
@@ -476,22 +248,19 @@ Yap::SmartPtr<CompositeProcessor> PipelineCompiler::CompileFile(const wchar_t * 
 
 Yap::SmartPtr<CompositeProcessor> PipelineCompiler::DoCompile(std::wistream& input)
 {
-	Preprocess(input);
+	_preprocessor->Preprocess(input);
 
 	if (!_constructor)
 	{
 		_constructor = shared_ptr<PipelineConstructor>(new PipelineConstructor);
 	}
-	_constructor->Reset(true);
 
 	try
 	{
-		if (Process())
-		{
-			return _constructor->GetPipeline();
-		}
+		_constructor->Reset(true);
+		Process();
 
-        return Yap::SmartPtr<CompositeProcessor>();
+		return _constructor->GetPipeline();
 	}
 	catch (CompileError& e)
 	{
@@ -501,338 +270,58 @@ Yap::SmartPtr<CompositeProcessor> PipelineCompiler::DoCompile(std::wistream& inp
 			<< ": Error code " << e.GetErrorNumber()
 			<< " " << e.GetErrorMessage();
 
+        wstring erorr_messge = output.str();
 		wcerr << output.str();
 
-        return SmartPtr<CompositeProcessor>();
+		return SmartPtr<CompositeProcessor>();
 	}
-}
-
-bool PipelineCompiler::Preprocess(wistream& script_file)
-{
-	wstring statement;
-	wstring line;
-	unsigned line_number = 0;
-
-	_script_lines.clear();
-	while (!_matching_check.empty()) _matching_check.pop();
-
-	while (getline(script_file, line, L'\n'))
-	{
-		_script_lines.push_back(line);
-
-		PreprocessLine(line, line_number);
-		++line_number;
-	}
-
-	DebugOutputTokens(wcout);
-
-	return true;
-}
-
-bool PipelineCompiler::PreprocessLine(std::wstring& line, 
-	int line_number)
-{
-	int pos = 0;
-
-	while ((pos = int(line.find_first_not_of(L" \t\n", pos))) != wstring::npos)
-	{
-		switch (line[pos])
-		{
-		case '(':
-			_tokens.push_back(Token(line_number, pos, 1, TokenLeftParenthesis));
-			_matching_check.push(Token(line_number, pos, 1, TokenLeftParenthesis));
-			pos += 1;
-			break;
-		case ')':
-		{
-			Token token(line_number, pos, 1, TokenRightParenthesis);
-			if (_matching_check.empty())
-			{
-				throw CompileError(token, CompileErrorNoMatchingLeftParenthesis, L"No matching left parethesis found.");
-			}
-			else if (_matching_check.top().type == TokenLeftBrace)
-			{
-				throw CompileError(token, CompileErrorRightBraceExpected, L"Right brace expected.");
-			}
-			else
-			{
-				_matching_check.pop();
-				pos += 1;
-				_tokens.push_back(token);
-			}
-		}
-		break;
-		case '{':
-			_tokens.push_back(Token(line_number, pos, 1, TokenLeftBrace));
-			pos += 1;
-			_matching_check.push(Token(line_number, pos, 1, TokenLeftBrace));
-			break;
-		case '}':
-		{
-			Token token(line_number, pos, 1, TokenRightBrace);
-			if (_matching_check.empty())
-			{
-				throw CompileError(token, CompileErrorNoMatchingLeftBrace, L"No matching left brace found.");
-			}
-			else if (_matching_check.top().type == TokenLeftParenthesis)
-			{
-				throw CompileError(token, CompileErrorRightParenthesisExpected, L"Right parenthesis expected.");
-			}
-			else
-			{
-				_matching_check.pop();
-				pos += 1;
-				_tokens.push_back(token);
-			}
-		}
-		break;
-		case ';':
-			_tokens.push_back(Token(line_number, pos, 1, TokenSemiColon));
-			pos += 1;
-			break;
-		case '.':
-			_tokens.push_back(Token(line_number, pos, 1, TokenOperatorDot));
-			pos += 1;
-			break;
-		case ',':
-			_tokens.push_back(Token(line_number, pos, 1, TokenComma));
-			pos += 1;
-			break;
-		case '=':
-			_tokens.push_back(Token(line_number, pos, 1, TokenOperatorAssign));
-			pos += 1;
-			break;
-		case '\"':
-		{
-			int i = 1;
-			for (; i + pos < int(line.length()) && line[pos + i] != '\"'; ++i);
-			if (i + pos == line.length())
-			{
-				// ‘⁄Õ¨“ª––…œ√ª”–’“µΩ∆•≈‰µƒΩ· ¯“˝∫≈
-				throw CompileError(Token(line_number, pos, i, TokenStringLiteral), CompileErrorNoMatchingQuote,
-					L"No matching quote found on the same line. String literals must be defined on one line.");
-			}
-
-			// token÷–≤ª∞¸∫¨“˝∫≈
-			_tokens.push_back(Token(line_number, pos + 1, i - 1, TokenStringLiteral));
-			pos += i + 1;
-			break;
-		}
-		case '/':
-		{
-			if (pos + 1 < int(line.length()) && line[pos + 1] == '/')
-			{
-				// ◊¢ Õ≤ø∑÷
-				return true;
-			}
-			break;
-		}
-		case '-':
-			if (pos + 1 < int(line.length()) && line[pos + 1] == '>')
-			{
-				_tokens.push_back(Token(line_number, pos, 2, TokenOperatorPointer));
-				pos += 2;
-			}
-			else
-			{
-				_tokens.push_back(Token(line_number, pos, 1, TokenOperatorMinus));
-				++pos;
-			}
-			break;
-		case '<':
-			if (pos + 2 < int(line.length()) && line[pos + 1] == '=' && line[pos + 2] == '>')
-			{
-				_tokens.push_back(Token(line_number, pos, 3, TokenOperatorLink));
-				pos += 3;
-			}
-			else
-			{
-				throw CompileError(Token(line_number, pos, 1, TokenUnknown), CompileErrorUnrecognizedSymbol, 
-					L"Unsupported symbol:\'<\'");
-			}
-			break;
-		default:
-		{
-			size_t next_separator = -1;
-			Token token;
-			token.line = line_number;
-			token.column = pos;
-
-			if (isdigit(line[pos]))
-			{
-				token.type = TokenNumericLiteral;
-				next_separator = line.find_first_of(L" \t\n\"{}()+-,*/=<>;", pos);
-			}
-			else if (isalpha(line[pos]))
-			{
-				token.type = TokenId;
-				next_separator = line.find_first_of(L" \t\n\"{}()+-.,*/=<>;", pos);
-			}
-			else
-			{
-				throw CompileError(Token(line_number, pos, 1, TokenUnknown), CompileErrorUnrecognizedSymbol, 
-					L"Unrecognized symbol.");
-			}
-
-			token.length = int(((next_separator == -1) ? line.length() : next_separator) - token.column);
-
-			if (token.type == TokenId)
-			{
-				auto token_string = line.substr(token.column, token.length);
-				if (_key_words.find(token_string) != _key_words.end())
-				{
-					token.type = TokenKeyword;
-				}
-			}
-
-			_tokens.push_back(token);
-			pos = int(next_separator);
-
-			if (next_separator == -1)
-			{
-				break;
-			}
-		}
-		}
-	}
-
-	return true;
 }
 
 bool PipelineCompiler::Process()
 {
-	Statement statement(*_constructor);
+	assert(_preprocessor);
+	auto tokens = _preprocessor->GetTokens();
 
-	for (auto token : _tokens)
+	while (!tokens.AtEnd())
 	{
-		token.text = GetTokenString(token);
-
-		switch (token.type)
+		switch (tokens.GetCurrentToken().type)
 		{
-		case TokenKeyword:
-			if (token.text == L"import" && statement.IsEmpty())
-			{
-				statement.SetType(StatementImport);
-			}
+		case TokenKeywordImport:
+			ProcessImport(tokens);
 			break;
 		case TokenOperatorAssign:
-			if (statement.GetType() == StatementUnknown)
-			{
-				statement.SetType(StatementAssign);
-			}
+			ProcessAssignment(tokens);
 			break;
-		case TokenOperatorLink:
-			if (statement.GetType() == StatementUnknown)
-			{
-				statement.SetType(StatementPropertyLink);
-			}
+		case TokenOperatorInOutMapping:
+		case TokenOperatorInMapping:
+		case TokenOperatorOutMapping:
+			ProcessPropertyMapping(tokens);
 			break;
-		case TokenOperatorPointer:
-			statement.SetType(StatementPortLink);
+		case TokenOperatorPortLink:
+			ProcessPortLink(tokens);
 			break;
 		case TokenId:
-			if (statement.GetTokenCount() == 1 && statement.GetToken(0).type == TokenId)
+		case TokenKeywordSelf:
+			if (tokens.IsFirstTokenInStatement() && tokens.IsTokenOfType(TokenId) &&
+				tokens.IsNextTokenOfType(TokenId))
 			{
-				statement.SetType(StatementDeclaration);
+				ProcessDeclaration(tokens);
+			}
+			else
+			{
+				tokens.Next();
 			}
 			break;
 		case TokenSemiColon:
-			if (!statement.IsEmpty())
-			{
-				if (statement.GetType() == StatementUnknown)
-				{
-					throw(CompileError(statement.GetLastToken(), 
-						CompileErrorIncompleteStatement, L"Statement not complete."));
-				}
-#ifdef DEBUG
-				DebugOutputStatement(cout, statement);
-#endif
-				statement.Process();
-				statement.Reset();
-			}
-			break;
+			throw(CompileError(tokens.GetLastToken(),
+				CompileErrorIncompleteStatement, L"Statement not complete."));
+
+		case TokenOperatorDot:
+			tokens.Next();
 		default:
 			;
-		}
-
-		if (token.type != TokenSemiColon)
-		{
-			statement.AddToken(token);
 		}
 	}
 
 	return true;
-}
-
-
-
-
-wstring PipelineCompiler::GetTokenString(const Token& token) const
-{
-	return _script_lines[token.line].substr(token.column, token.length);
-}
-
-
-
-void PipelineCompiler::DebugOutputTokens(std::wostream& output)
-{
-	for (auto iter = _tokens.begin(); iter != _tokens.end(); ++iter)
-	{
-		auto token = _script_lines[iter->line].substr(iter->column, iter->length);
-		auto token_item = token_map.find(iter->type);
-		if (token_item != token_map.end())
-		{
-			output << token_item->second.c_str() << "\t: " << token.c_str() << "\n";
-		}
-		else
-		{
-			assert(0);
-		}
-	}
-}
-
-void PipelineCompiler::TestTokens()
-{
-	map<TokenType, wstring> token_map = boost::assign::map_list_of(TokenOperatorPointer, L"->")
-		(TokenOperatorLink, L"<=>")
-		(TokenOperatorDot, L".")
-		(TokenOperatorAssign, L"=")
-		(TokenComma, L",")
-		(TokenSemiColon, L";")
-		(TokenLeftBrace, L"{")
-		(TokenRightParenthesis, L"}")
-		(TokenLeftParenthesis, L"(")
-		(TokenRightParenthesis, L")")
-		(TokenOperatorMinus, L"-");
-
-	for (auto iter = _tokens.begin(); iter != _tokens.end(); ++iter)
-	{
-		auto token = _script_lines[iter->line].substr(iter->column, iter->length);
-		auto token_item = token_map.find(iter->type);
-		if (token_item != token_map.end())
-		{
-			assert(token_item->second == token);
-		}
-		else
-		{
-			switch (iter->type)
-			{
-			case TokenId:
-				assert(isalpha(token[0]));
-				break;
-			case TokenStringLiteral:
-				assert(_script_lines[iter->line][iter->column - 1] == L'\"' &&
-					_script_lines[iter->line][iter->column + iter->length] == L'\"');
-				break;
-			case TokenNumericLiteral:
-				assert(isdigit(token[0]));
-				break;
-			case TokenKeyword:
-				assert(_key_words.find(token) != _key_words.end());
-				break;
-			default:
-				assert(0);
-			}
-		}
-	}
 }

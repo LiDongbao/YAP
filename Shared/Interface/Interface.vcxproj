@@ -144,12 +144,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="IContainer.h" />
-    <ClInclude Include="IProcessor.h" />
     <ClInclude Include="IData.h" />
-    <ClInclude Include="IMemory.h" />
-    <ClInclude Include="IProperty.h" />
+    <ClInclude Include="ILog.h" />
+    <ClInclude Include="Interfaces.h" />
+    <ClInclude Include="IProcessor.h" />
+    <ClInclude Include="IVariable.h" />
+    <ClInclude Include="smartptr.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="InterfaceClassDiagram.cd" />
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

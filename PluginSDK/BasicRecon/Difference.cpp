@@ -1,5 +1,6 @@
 #include "Difference.h"
-#include "Interface/Client/DataHelper.h"
+#include "Client/DataHelper.h"
+#include "Implement/LogUserImpl.h"
 
 using namespace Yap;
 using namespace std;
@@ -22,6 +23,7 @@ void calc_difference(T * input_data,
 
 Difference::Difference() : ProcessorImpl(L"Difference")
 {
+	LOG_TRACE(L"Difference constructor called.", L"BasicRecon");
 	AddInput(L"Input", YAP_ANY_DIMENSION, DataTypeAll);
 	AddInput(L"Reference", YAP_ANY_DIMENSION, DataTypeAll);
 
@@ -29,8 +31,16 @@ Difference::Difference() : ProcessorImpl(L"Difference")
 }
 
 
+Difference::Difference(const Difference& rhs)
+	:ProcessorImpl(rhs)
+{
+	LOG_TRACE(L"Difference constructor called.", L"BasicRecon");
+}
+
+
 Difference::~Difference()
 {
+	LOG_TRACE(L"Difference destructor called.", L"BasicRecon");
 }
 
 bool Yap::Difference::Input(const wchar_t * port, IData * data)
@@ -71,7 +81,7 @@ bool Yap::Difference::Input(const wchar_t * port, IData * data)
 		//more data type?
 		if (data->GetDataType() == DataTypeFloat)
 		{
-			auto output_data = YapShared(new FloatData(data->GetDimensions()));
+			auto output_data = CreateData<float>(data);
 
 			calc_difference(GetDataArray<float>(data), GetDataArray<float>(_reference_data.get()),
 				GetDataArray<float>(output_data.get()), input_data.GetDataSize());
@@ -79,7 +89,7 @@ bool Yap::Difference::Input(const wchar_t * port, IData * data)
 		}
 		else
 		{
-			auto output_data = YapShared(new DoubleData(data->GetDimensions()));
+			auto output_data = CreateData<double>(data);
 
 			calc_difference(GetDataArray<double>(data), GetDataArray<double>(_reference_data.get()),
 				GetDataArray<double>(output_data.get()), input_data.GetDataSize());
@@ -92,9 +102,4 @@ bool Yap::Difference::Input(const wchar_t * port, IData * data)
 	}
 
 	return true;
-}
-
-IProcessor * Yap::Difference::Clone()
-{
-	return new (std::nothrow) Difference(*this);
 }

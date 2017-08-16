@@ -1,7 +1,8 @@
 #include "PipelineConstructor.h"
 #include "ModuleManager.h"
 #include "ProcessorAgent.h"
-#include "Interface/Implement/CompositeProcessor.h"
+#include "Implement/CompositeProcessor.h"
+#include "Implement/LogImpl.h"
 
 using namespace Yap;
 using namespace std;
@@ -37,8 +38,6 @@ wstring ConstructError::GetErrorMessage() const
 
 PipelineConstructor::PipelineConstructor()
 {
-	_module_manager = std::shared_ptr<ModuleManager>(new ModuleManager);
-
 }
 
 PipelineConstructor::~PipelineConstructor()
@@ -51,8 +50,8 @@ void PipelineConstructor::Reset(bool reset_modules)
 
 	if (reset_modules)
     {
-		_module_manager->Reset();
-	}
+		ModuleManager::GetInstance().Reset();
+    }
 }
 
 bool Yap::PipelineConstructor::LoadModule(const wchar_t * module_name)
@@ -64,7 +63,7 @@ bool Yap::PipelineConstructor::LoadModule(const wchar_t * module_name)
 	}
 	plugin_path += module_name;
 
-	return _module_manager->LoadModule(plugin_path.c_str());
+	return ModuleManager::GetInstance().LoadModule(plugin_path.c_str());
 }
 
 void Yap::PipelineConstructor::SetPluginFolder(const wchar_t * path)
@@ -81,10 +80,9 @@ IProcessor * Yap::PipelineConstructor::CreateProcessor(const wchar_t * class_id,
 	const wchar_t * instance_id)
 {
 	assert(_pipeline);
-	auto processor = _module_manager->CreateProcessor(class_id, instance_id);
+	auto processor = ModuleManager::GetInstance().CreateProcessor(class_id, instance_id);
 	if (processor == nullptr)
 	{
-
 		throw ConstructError(0, ConstructErrorCreateProcessor, L"Failed to create processor instance.");
 	}
 
@@ -161,13 +159,6 @@ bool Yap::PipelineConstructor::MapOutput(const wchar_t * pipeline_port,
 
 Yap::SmartPtr<Pipeline> Yap::PipelineConstructor::GetPipeline()
 {
-    if (_pipeline->_modules.empty())
-    {
-        for (auto module : _module_manager->_modules)
-        {
-            _pipeline->AddModule(module.second);
-        }
-    }
 	return _pipeline;
 }
 
@@ -203,7 +194,7 @@ bool PipelineConstructor::SetProperty(const wchar_t * processor_id,
 	bool result = false;
 	switch (property_type)
 	{
-	case PropertyBool:
+	case VariableBool:
 	{
 		if (wcscmp(value, L"true") == 0)
 		{
@@ -215,17 +206,17 @@ bool PipelineConstructor::SetProperty(const wchar_t * processor_id,
 		}
 	}
 	break;
-	case PropertyInt:
+	case VariableInt:
 	{
 		result = processor.SetInt(property_id, _wtoi(value));
 	}
 	break;
-	case PropertyFloat:
+	case VariableFloat:
 	{
 		result = processor.SetFloat(property_id, _wtof(value));
 	}
 	break;
-	case PropertyString:
+	case VariableString:
 	{
 		result = processor.SetString(property_id, value);
 	}
@@ -250,25 +241,26 @@ bool PipelineConstructor::InstanceIdExists(const wchar_t * id)
 	return _pipeline->Find(id) != nullptr;
 }
 
-bool PipelineConstructor::LinkProperty(const wchar_t * processor_id,
+bool PipelineConstructor::MapProperty(const wchar_t * processor_id,
 	const wchar_t * property_id,
-	const wchar_t * param_id)
+	const wchar_t * variable_id, 
+	bool input, bool output)
 {
 	assert(_pipeline);
 
 	auto processor = _pipeline->Find(processor_id);
 	if (!processor)
 	{
-		auto output = wstring(L"failed to find processor:") + processor_id;
-		throw ConstructError(0, ConstructErrorProcessorNotFound, output.c_str());
+		auto output_str = wstring(L"failed to find processor:") + processor_id;
+		throw ConstructError(0, ConstructErrorProcessorNotFound, output_str.c_str());
 	}
 
-	if (!processor->LinkProperty(property_id, param_id))
+	if (!processor->MapProperty(property_id, variable_id, input, output))
 	{
-		wostringstream output;
-		output << L"Fail to link property to system variable. Property: " << property_id
-			<< L". System variable: " << param_id;
-		throw ConstructError(0, ConstructErrorPropertyLink, output.str());
+		wostringstream output_str;
+		output_str << L"Fail to link property to system variable. Property: " << property_id
+			<< L". System variable: " << variable_id;
+		throw ConstructError(0, ConstructErrorPropertyLink, output_str.str());
 	}
 
 	return true;

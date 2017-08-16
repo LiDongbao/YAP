@@ -100,6 +100,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;BASICRECON_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(YAP_ROOT)\PluginSDK;$(YAP_ROOT)\Shared;$(YAP_ROOT)\API;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -116,6 +117,7 @@
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;BASICRECON_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(YAP_ROOT)\PluginSDK;$(YAP_ROOT)\Shared;$(YAP_ROOT)\API;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <EnablePREfast>true</EnablePREfast>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -138,6 +140,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;BASICRECON_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(YAP_ROOT)\PluginSDK;$(YAP_ROOT)\Shared;$(YAP_ROOT)\API;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -158,6 +161,7 @@
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;BASICRECON_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <EnablePREfast>true</EnablePREfast>
       <AdditionalIncludeDirectories>$(YAP_ROOT)\PluginSDK;$(YAP_ROOT)\Shared;$(YAP_ROOT)\API;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -170,6 +174,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Algorithm2DWrapper.h" />
+    <ClInclude Include="CalcuArea.h" />
     <ClInclude Include="ChannelDataCollector.h" />
     <ClInclude Include="ChannelIterator.h" />
     <ClInclude Include="ChannelMerger.h" />
@@ -181,6 +186,7 @@
     <ClInclude Include="ExtractTextureMatrix.h" />
     <ClInclude Include="Fft1D.h" />
     <ClInclude Include="Fft2D.h" />
+    <ClInclude Include="FineCF.h" />
     <ClInclude Include="imageProcessing.h" />
     <ClInclude Include="JpegExporter.h" />
     <ClInclude Include="ModulePhase.h" />
@@ -209,6 +215,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="CalcuArea.cpp" />
     <ClCompile Include="ChannelDataCollector.cpp" />
     <ClCompile Include="ChannelIterator.cpp" />
     <ClCompile Include="ChannelMerger.cpp">
@@ -269,6 +276,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="FineCF.cpp" />
     <ClCompile Include="JpegExporter.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Use</PrecompiledHeader>

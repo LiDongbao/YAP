@@ -2,7 +2,7 @@
 #ifndef NiumagImgReader_h__
 #define NiumagImgReader_h__
 
-#include "Interface/Implement/processorImpl.h"
+#include "Implement/processorImpl.h"
 
 namespace Yap
 {
@@ -14,6 +14,7 @@ namespace Yap
 	class NiumagImgReader :
 		public ProcessorImpl
 	{
+		IMPLEMENT_SHARED(NiumagImgReader)
 	public:
 		NiumagImgReader(void);
 		NiumagImgReader(const NiumagImgReader& rhs);
@@ -21,8 +22,7 @@ namespace Yap
 	private:
 		~NiumagImgReader();
 
-		virtual IProcessor * Clone() override;
-		virtual bool Input(const wchar_t * name, IData * data);
+		virtual bool Input(const wchar_t * name, IData * data) override;
 
 		bool ReadNiumagImgData();
 	};

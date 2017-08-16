@@ -1,6 +1,7 @@
 #include "ModulePhase.h"
 
-#include "Interface/Client/DataHelper.h"
+#include "Client/DataHelper.h"
+#include "Implement/LogUserImpl.h"
 
 #include <math.h>
 #include <complex>
@@ -42,6 +43,7 @@ bool GetPhase(complex<T>* input, T* phase,
 ModulePhase::ModulePhase(void) :
 	ProcessorImpl(L"ModulePhase")
 {
+	LOG_TRACE(L"ModulePhase constructor called.", L"BasicRecon");
 	AddInput(L"Input", YAP_ANY_DIMENSION, DataTypeComplexDouble | DataTypeComplexFloat);
 	AddOutput(L"Module", YAP_ANY_DIMENSION, DataTypeDouble | DataTypeFloat);
 	AddOutput(L"Phase", YAP_ANY_DIMENSION, DataTypeDouble | DataTypeFloat);
@@ -50,11 +52,12 @@ ModulePhase::ModulePhase(void) :
 Yap::ModulePhase::ModulePhase(const ModulePhase& rhs):
 	ProcessorImpl(rhs)
 {
-
+	LOG_TRACE(L"ModulePhase constructor called.", L"BasicRecon");
 }
 
 ModulePhase::~ModulePhase()
 {
+	LOG_TRACE(L"ModulePhase destructor called.", L"BasicRecon");
 }
 
 bool ModulePhase::Input(const wchar_t * port, IData * data)
@@ -74,7 +77,7 @@ bool ModulePhase::Input(const wchar_t * port, IData * data)
 	{
 		if (data->GetDataType() == DataTypeComplexDouble)
 		{
-			auto module = YapShared(new DoubleData(data->GetDimensions()));
+			auto module = CreateData<double>(data);
 
 			GetModule(GetDataArray<complex<double>>(data),
 				GetDataArray<double>(module.get()),
@@ -85,7 +88,7 @@ bool ModulePhase::Input(const wchar_t * port, IData * data)
 		
 		else
 		{
-			auto module = YapShared(new FloatData(data->GetDimensions()));
+			auto module = CreateData<float>(data);
 
 			GetModule(GetDataArray<complex<float>>(data),
 				GetDataArray<float>(module.get()),
@@ -93,14 +96,13 @@ bool ModulePhase::Input(const wchar_t * port, IData * data)
 
 			Feed(L"Module", module.get());
 		}
-
 	}
 
 	if (want_phase)
 	{
 		if (data->GetDataType() == DataTypeComplexDouble)
 		{
-			auto phase = YapShared(new DoubleData(data->GetDimensions()));
+			auto phase = CreateData<double>(data);
 
 			GetPhase(GetDataArray<complex<double>>(data), GetDataArray<double>(phase.get()),
 				input_data.GetDataSize());
@@ -109,22 +111,14 @@ bool ModulePhase::Input(const wchar_t * port, IData * data)
 		}
 		else
 		{
-			auto phase = YapShared(new FloatData(data->GetDimensions()));
+			auto phase = CreateData<float>(data);
 
 			GetPhase(GetDataArray<complex<float>>(data), GetDataArray<float>(phase.get()),
 				input_data.GetDataSize());
 
 			Feed(L"Phase", phase.get());
 		}
-		
 	}
 
 	return true;
 }
-
-Yap::IProcessor * Yap::ModulePhase::Clone()
-{
-	return new (nothrow) ModulePhase(*this);
-}
-
-
